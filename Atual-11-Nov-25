@@ -1,0 +1,3639 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Gerenciamento de Propostas - Medmais</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/html-docx-js/dist/html-docx.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://unpkg.com/imask"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .tab-button {
+            transition: all 0.3s ease;
+        }
+
+        .tab-button.active {
+            border-color: #0891b2;
+            background-color: #0891b2;
+            color: white;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .service-card {
+            transition: all 0.3s ease;
+        }
+
+        .service-card.selected {
+            border-color: #0891b2;
+            background-color: #ecfeff;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        }
+
+        .price-input,
+        .quantity-input,
+        .theme-input,
+        .percent-input,
+        .table-price-input,
+        .frequency-selector,
+        .modal-input {
+            text-align: center;
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 4px 8px;
+            transition: all 0.2s ease;
+        }
+
+        .service-card.selected .price-input,
+        .service-card.selected .quantity-input,
+        .financial-card .percent-input,
+        .table-price-input,
+        .service-card.selected .frequency-selector,
+        .modal-input:focus {
+            background-color: #fff;
+            border-color: #94a3b8;
+        }
+
+        .price-input {
+            width: 110px;
+            text-align: right;
+        }
+
+        .quantity-input {
+            width: 70px;
+        }
+
+        .theme-input {
+            width: 100%;
+            text-align: left;
+        }
+
+        .percent-input {
+            width: 80px;
+        }
+
+        .table-price-input {
+            width: 100%;
+        }
+
+        .frequency-selector {
+            text-align: left;
+        }
+
+        .prose {
+            max-width: 100%;
+        }
+
+        .description-textarea {
+            width: 100%;
+            min-height: 80px;
+            padding: 8px;
+            border-radius: 6px;
+            border: 1px solid #e2e8f0;
+        }
+
+        /* Estilos para Modal e Notificações */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease-in-out;
+        }
+
+        .modal-overlay.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 2rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+            transform: scale(0.95);
+            transition: all 0.3s ease-in-out;
+            width: 90%;
+            max-width: 500px;
+        }
+
+        .modal-overlay.visible .modal-content {
+            transform: scale(1);
+        }
+
+        .modal-input,
+        .modal-select {
+            width: 100%;
+            padding: 0.5rem;
+            text-align: left;
+        }
+
+        .toast-notification {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background-color: #22c55e;
+            color: white;
+            padding: 1rem 1.5rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            z-index: 1001;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.4s ease;
+        }
+
+        .toast-notification.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .loader-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(255, 255, 255, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+        }
+
+        .loader {
+            border: 8px solid #f3f3f3;
+            border-radius: 50%;
+            border-top: 8px solid #0891b2;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+
+            .printable-area,
+            .printable-area * {
+                visibility: visible;
+            }
+
+            .printable-area {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+            }
+
+            .no-print {
+                display: none;
+            }
+        }
+        .q-btn {
+            padding: 8px 16px;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            background-color: #f8fafc;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .q-btn.active {
+            background-color: #0891b2;
+            color: white;
+            border-color: #0891b2;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-50 text-gray-800">
+
+    <div id="login-modal" class="modal-overlay visible">
+        <div class="modal-content max-w-md">
+            <h3 class="text-xl font-bold mb-6 text-center text-cyan-800">Acessar o Sistema</h3>
+            <form id="login-form" class="space-y-4">
+                <div>
+                    <label for="login-email" class="block text-sm font-medium text-gray-700">Email</label>
+                    <input type="email" id="login-email" class="modal-input mt-1" required autocomplete="email">
+                </div>
+                <div>
+                    <label for="login-password" class="block text-sm font-medium text-gray-700">Senha</label>
+                    <input type="password" id="login-password" class="modal-input mt-1" required autocomplete="current-password">
+                </div>
+                <div id="login-message" class="text-sm text-center h-4"></div>
+                <div class="flex items-center justify-center gap-4 pt-4">
+                    <button type="submit" id="btn-login" class="w-full bg-cyan-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-cyan-700 transition-all">Entrar</button>
+                </div>
+                <div class="text-center mt-4">
+                    <a href="#" id="forgot-password-link" class="text-sm text-cyan-700 hover:underline">Esqueci a senha</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="main-app-container" class="hidden">
+
+        <div id="loader" class="loader-overlay">
+            <div class="loader"></div>
+        </div>
+
+        <div id="client-history-modal" class="modal-overlay">
+            <div class="modal-content max-w-3xl">
+                <h3 class="text-xl font-bold mb-4 text-center text-cyan-800">Histórico do Cliente</h3>
+                <div id="client-history-details" class="mb-6 p-4 bg-gray-50 rounded-lg text-sm"></div>
+                <h4 class="text-lg font-semibold text-cyan-900 border-b pb-2 mb-2">Propostas Associadas</h4>
+                <div id="client-history-proposals" class="space-y-2 max-h-80 overflow-y-auto"></div>
+                <div class="flex justify-end mt-6">
+                    <button id="modal-history-close-btn" class="bg-gray-200 text-gray-800 font-semibold py-2 px-6 rounded-lg hover:bg-gray-300 transition-all">Fechar</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="confirmation-modal" class="modal-overlay">
+            <div class="modal-content text-center max-w-sm">
+                <h3 id="modal-title" class="text-lg font-bold mb-4">Confirmar Ação</h3>
+                <p id="modal-message" class="text-gray-600 mb-6">Você tem certeza?</p>
+                <div class="flex justify-center gap-4">
+                    <button id="modal-confirm-btn" class="bg-red-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-red-700 transition-all">Confirmar</button>
+                    <button id="modal-cancel-btn" class="bg-gray-200 text-gray-800 font-semibold py-2 px-6 rounded-lg hover:bg-gray-300 transition-all">Cancelar</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="client-modal" class="modal-overlay">
+            <div class="modal-content">
+                <h3 id="client-modal-title" class="text-xl font-bold mb-6 text-center text-cyan-800">Adicionar Novo Cliente</h3>
+                <form id="client-form" class="space-y-3">
+                    <input type="hidden" id="clientId">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                            <label for="client-modal-name" class="block text-sm font-medium text-gray-700">Nome da Empresa</label>
+                            <input type="text" id="client-modal-name" class="modal-input mt-1" required>
+                        </div>
+                        <div>
+                            <label for="client-modal-cnpj" class="block text-sm font-medium text-gray-700">CNPJ</label>
+                            <input type="text" id="client-modal-cnpj" class="modal-input mt-1">
+                        </div>
+                    </div>
+                    <div>
+                        <label for="client-modal-address" class="block text-sm font-medium text-gray-700">Endereço Completo</label>
+                        <input type="text" id="client-modal-address" class="modal-input mt-1">
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                            <label for="client-modal-contact-person" class="block text-sm font-medium text-gray-700">Pessoa de Contato</label>
+                            <input type="text" id="client-modal-contact-person" class="modal-input mt-1">
+                        </div>
+                        <div>
+                            <label for="client-modal-contact-role" class="block text-sm font-medium text-gray-700">Cargo do Contato</label>
+                            <input type="text" id="client-modal-contact-role" class="modal-input mt-1">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                            <label for="client-modal-phone" class="block text-sm font-medium text-gray-700">Telefone</label>
+                            <input type="text" id="client-modal-phone" class="modal-input mt-1">
+                        </div>
+                        <div>
+                            <label for="client-modal-email" class="block text-sm font-medium text-gray-700">E-mail</label>
+                            <input type="email" id="client-modal-email" class="modal-input mt-1">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                            <label for="client-modal-type" class="block text-sm font-medium text-gray-700">Tipo de Empresa</label>
+                            <input type="text" id="client-modal-type" class="modal-input mt-1">
+                        </div>
+                        <div>
+                            <label for="client-modal-cnae" class="block text-sm font-medium text-gray-700">CNAE</label>
+                            <input type="text" id="client-modal-cnae" class="modal-input mt-1">
+                        </div>
+                    </div>
+                    <div class="flex justify-end gap-4 pt-4">
+                        <button type="button" id="modal-client-cancel-btn" class="bg-gray-200 text-gray-800 font-semibold py-2 px-6 rounded-lg hover:bg-gray-300 transition-all">Cancelar</button>
+                        <button type="submit" class="bg-cyan-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-cyan-700 transition-all">Salvar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+
+        <div id="add-service-modal" class="modal-overlay">
+            <div class="modal-content">
+                <h3 class="text-xl font-bold mb-6 text-center text-cyan-800">Adicionar Novo Serviço</h3>
+                <form id="add-service-form" class="space-y-4">
+                    <div>
+                        <label for="service-name" class="block text-sm font-medium text-gray-700">Nome do Serviço</label>
+                        <input type="text" id="service-name" class="modal-input mt-1" required>
+                    </div>
+                    <div>
+                        <label for="service-billing-model" class="block text-sm font-medium text-gray-700">Modelo de Cobrança</label>
+                        <select id="service-billing-model" class="modal-select mt-1">
+                            <option value="porVida">Serviços por Vida</option>
+                            <option value="anual">Serviços Anuais</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="service-category-select" class="block text-sm font-medium text-gray-700">Tipo de Serviço</label>
+                        <select id="service-category-select" class="modal-select mt-1">
+                            <!-- Options will be populated by JS -->
+                        </select>
+                    </div>
+                    <div>
+                        <label for="service-pricing-type" class="block text-sm font-medium text-gray-700">Tipo de Preço</label>
+                        <select id="service-pricing-type" class="modal-select mt-1">
+                            <option value="faixa">Por Faixa de Vidas</option>
+                            <option value="fixo">Preço Fixo / Quantidade</option>
+                        </select>
+                    </div>
+                    <div id="service-type-wrapper">
+                        <label for="service-type" class="block text-sm font-medium text-gray-700">Tipo de Serviço (para preço fixo)</label>
+                        <select id="service-type" class="modal-select mt-1">
+                            <option value="fixo">Fixo</option>
+                            <option value="quantidade">Por Quantidade</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="service-description" class="block text-sm font-medium text-gray-700">Descrição</label>
+                        <textarea id="service-description" rows="3" class="modal-input mt-1"></textarea>
+                    </div>
+                    <div class="flex justify-end gap-4 pt-4">
+                        <button type="button" id="modal-add-cancel-btn" class="bg-gray-200 text-gray-800 font-semibold py-2 px-6 rounded-lg hover:bg-gray-300 transition-all">Cancelar</button>
+                        <button type="submit" class="bg-cyan-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-cyan-700 transition-all">Adicionar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div id="edit-service-modal" class="modal-overlay">
+            <div class="modal-content">
+                <h3 class="text-xl font-bold mb-6 text-center text-cyan-800">Editar Serviço</h3>
+                <form id="edit-service-form" class="space-y-4">
+                    <input type="hidden" id="edit-service-id">
+                    <input type="hidden" id="edit-service-original-category">
+                    <div>
+                        <label for="edit-service-name" class="block text-sm font-medium text-gray-700">Nome do Serviço</label>
+                        <input type="text" id="edit-service-name" class="modal-input mt-1" required>
+                    </div>
+                    <div>
+                        <label for="edit-service-billing-model" class="block text-sm font-medium text-gray-700">Modelo de Cobrança</label>
+                        <select id="edit-service-billing-model" class="modal-select mt-1">
+                            <option value="porVida">Serviços por Vida</option>
+                            <option value="anual">Serviços Anuais</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="edit-service-category-select" class="block text-sm font-medium text-gray-700">Tipo de Serviço</label>
+                        <select id="edit-service-category-select" class="modal-select mt-1">
+                            <!-- Options will be populated by JS -->
+                        </select>
+                    </div>
+                    <div>
+                        <label for="edit-service-pricing-type" class="block text-sm font-medium text-gray-700">Tipo de Preço</label>
+                        <select id="edit-service-pricing-type" class="modal-select mt-1">
+                            <option value="faixa">Por Faixa de Vidas</option>
+                            <option value="fixo">Preço Fixo / Quantidade</option>
+                        </select>
+                    </div>
+                    <div id="edit-service-type-wrapper">
+                        <label for="edit-service-type" class="block text-sm font-medium text-gray-700">Tipo de Serviço (para preço fixo)</label>
+                        <select id="edit-service-type" class="modal-select mt-1">
+                            <option value="fixo">Fixo</option>
+                            <option value="quantidade">Por Quantidade</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="edit-service-description" class="block text-sm font-medium text-gray-700">Descrição</label>
+                        <textarea id="edit-service-description" rows="3" class="modal-input mt-1"></textarea>
+                    </div>
+                    <div class="flex justify-end gap-4 pt-4">
+                        <button type="button" id="modal-edit-cancel-btn" class="bg-gray-200 text-gray-800 font-semibold py-2 px-6 rounded-lg hover:bg-gray-300 transition-all">Cancelar</button>
+                        <button type="submit" class="bg-cyan-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-cyan-700 transition-all">Salvar Alterações</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div id="price-adjustment-modal" class="modal-overlay">
+            <div class="modal-content">
+                <h3 class="text-xl font-bold mb-4 text-center text-cyan-800">Selecionar Serviços para Reajuste</h3>
+                <div class="mb-4">
+                    <label class="flex items-center">
+                        <input type="checkbox" id="select-all-services" class="h-4 w-4 text-cyan-600 border-gray-300 rounded">
+                        <span class="ml-2 text-gray-700 font-medium">Selecionar Todos</span>
+                    </label>
+                </div>
+                <form id="price-adjustment-form" class="space-y-4 max-h-80 overflow-y-auto">
+                </form>
+                <div class="flex justify-end gap-4 pt-4 mt-4 border-t">
+                    <button type="button" id="modal-adjustment-cancel-btn" class="bg-gray-200 text-gray-800 font-semibold py-2 px-6 rounded-lg hover:bg-gray-300 transition-all">Cancelar</button>
+                    <button type="button" id="apply-adjustment-btn" class="bg-cyan-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-cyan-700 transition-all">Aplicar Reajuste</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="proposal-details-modal" class="modal-overlay">
+            <div class="modal-content">
+                <h3 class="text-xl font-bold mb-6 text-center text-cyan-800">Acompanhamento da Proposta</h3>
+                <form id="proposal-details-form" class="space-y-4">
+                    <input type="hidden" id="details-proposal-id">
+                    <div>
+                        <label for="proposal-status" class="block text-sm font-medium text-gray-700">Status da Proposta</label>
+                        <select id="proposal-status" class="modal-select mt-1">
+                            <option value="Criada">Criada</option>
+                            <option value="Enviada ao Cliente">Enviada ao Cliente</option>
+                            <option value="Em Negociação">Em Negociação</option>
+                            <option value="Aceita">Aceita</option>
+                            <option value="Recusada">Recusada</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="proposal-observations" class="block text-sm font-medium text-gray-700">Observações</label>
+                        <textarea id="proposal-observations" rows="4" class="modal-input mt-1" placeholder="Adicione uma nova observação..."></textarea>
+                    </div>
+                    <div class="flex justify-end gap-4 pt-4">
+                        <button type="button" id="modal-details-cancel-btn" class="bg-gray-200 text-gray-800 font-semibold py-2 px-6 rounded-lg hover:bg-gray-300 transition-all">Cancelar</button>
+                        <button type="submit" class="bg-cyan-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-cyan-700 transition-all">Salvar</button>
+                    </div>
+                </form>
+                <div class="mt-6">
+                    <h4 class="text-lg font-semibold text-cyan-900 border-b pb-2 mb-2">Histórico de Alterações</h4>
+                    <div id="proposal-history-container" class="space-y-2 max-h-40 overflow-y-auto text-sm">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="questionnaire-answers-modal" class="modal-overlay">
+            <div class="modal-content max-w-2xl">
+                <h3 class="text-xl font-bold mb-6 text-center text-cyan-800">Respostas do Questionário</h3>
+                <div id="questionnaire-answers-content" class="space-y-4 text-sm max-h-[60vh] overflow-y-auto pr-4"></div>
+                <div class="flex justify-end mt-6 pt-4 border-t">
+                    <button id="modal-answers-close-btn" class="bg-gray-200 text-gray-800 font-semibold py-2 px-6 rounded-lg hover:bg-gray-300 transition-all">Fechar</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="accept-proposal-modal" class="modal-overlay">
+            <div class="modal-content max-w-lg">
+                <h3 class="text-xl font-bold mb-6 text-center text-green-800">Confirmar Aceite da Proposta</h3>
+                <form id="accept-proposal-form" class="space-y-4">
+                    <p class="text-sm text-gray-600">Para confirmar o aceite desta proposta, por favor, preencha os dados abaixo. Esta ação formaliza o seu acordo com os termos e valores apresentados.</p>
+                    <div>
+                        <label for="accept-fullname" class="block text-sm font-medium text-gray-700">Nome Completo do Responsável</label>
+                        <input type="text" id="accept-fullname" class="modal-input mt-1" required>
+                    </div>
+                    <div>
+                        <label for="accept-document" class="block text-sm font-medium text-gray-700">CPF ou CNPJ</label>
+                        <input type="text" id="accept-document" class="modal-input mt-1" required>
+                    </div>
+                    <div class="pt-2">
+                        <label class="flex items-center">
+                            <input type="checkbox" id="accept-terms" class="h-4 w-4 text-cyan-600 border-gray-300 rounded">
+                            <span class="ml-2 text-gray-700 text-sm">Li e concordo com os termos da proposta.</span>
+                        </label>
+                    </div>
+                    <div class="flex justify-end gap-4 pt-4">
+                        <button type="button" id="modal-accept-cancel-btn" class="bg-gray-200 text-gray-800 font-semibold py-2 px-6 rounded-lg hover:bg-gray-300 transition-all">Cancelar</button>
+                        <button type="submit" class="bg-green-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-green-700 transition-all">Confirmar Aceite</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div id="thank-you-modal" class="modal-overlay">
+            <div class="modal-content text-center max-w-lg">
+                <h3 class="text-2xl font-bold text-green-700 mb-4">Obrigado!</h3>
+                <p class="text-gray-600 mb-6">Recebemos seu pedido de orçamento com sucesso. Nossa equipe comercial entrará em contato em breve para dar continuidade ao seu atendimento.</p>
+                <div class="flex justify-center">
+                    <button id="modal-thank-you-close-btn" class="bg-green-600 text-white font-semibold py-2 px-8 rounded-lg hover:bg-green-700 transition-all">Fechar</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="category-modal" class="modal-overlay">
+            <div class="modal-content">
+                <h3 id="category-modal-title" class="text-xl font-bold mb-6 text-center text-cyan-800">Adicionar Nova Categoria</h3>
+                <form id="category-form" class="space-y-4">
+                    <input type="hidden" id="categoryId-modal">
+                    <div>
+                        <label for="category-name" class="block text-sm font-medium text-gray-700">Nome da Categoria</label>
+                        <input type="text" id="category-name" class="modal-input mt-1" required>
+                    </div>
+                    <div class="flex justify-end gap-4 pt-4">
+                        <button type="button" id="modal-category-cancel-btn" class="bg-gray-200 text-gray-800 font-semibold py-2 px-6 rounded-lg hover:bg-gray-300 transition-all">Cancelar</button>
+                        <button type="submit" class="bg-cyan-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-cyan-700 transition-all">Salvar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div id="toast-notification" class="toast-notification">
+            <span id="toast-message">Operação realizada com sucesso!</span>
+        </div>
+
+        <div class="container mx-auto p-4 md:p-8">
+            <header class="text-center mb-8 no-print">
+                <div class="flex flex-col gap-4 md:flex-row md:justify-between md:items-center">
+                    <div class="hidden md:block w-24"></div> <div>
+                        <h1 class="text-3xl md:text-4xl font-bold text-cyan-700">Sistema de Gerenciamento de Propostas</h1>
+                        <p class="text-gray-600 mt-2">Navegue entre as abas para criar, visualizar e gerenciar suas propostas.</p>
+                        <p id="user-info-display" class="text-xs text-gray-500 mt-2 font-mono"></p> </div>
+                    <button id="btn-logout" class="w-full md:w-auto bg-red-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-red-600 transition-all">Sair</button> </div>
+            </header>
+
+            <div class="mb-6 border-b border-gray-200 no-print">
+                <nav class="flex flex-wrap -mb-px" aria-label="Tabs">
+                    <button class="tab-button active font-semibold py-3 px-6 border-b-2" data-tab="generator">Gerador</button>
+                    <button class="tab-button font-semibold py-3 px-6 border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300" data-tab="clients">Cadastro de Clientes</button>
+                    <button class="tab-button font-semibold py-3 px-6 border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300" data-tab="preview-proposal">Prévia da Proposta</button>
+                    <button class="tab-button font-semibold py-3 px-6 border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300" data-tab="preview-contract">Prévia do Contrato</button>
+                    <button class="tab-button font-semibold py-3 px-6 border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300" data-tab="saved">Propostas Salvas</button>
+                    <button class="tab-button font-semibold py-3 px-6 border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300" data-tab="prices">Tabela de Preços</button>
+                </nav>
+            </div>
+
+            <div id="tab-generator" class="tab-content active">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div id="main-content-col" class="lg:col-span-2 space-y-6">
+                        <div class="bg-white p-6 rounded-xl shadow-md border border-gray-200">
+                            <div class="flex justify-between items-center">
+                                <h2 class="text-xl font-semibold text-cyan-800 vendor-only-title">1. Dados do Cliente e Vidas</h2>
+                                <button id="btn-new-proposal" class="bg-green-100 text-green-800 font-semibold py-2 px-4 rounded-lg hover:bg-green-200 transition-all">Nova Proposta</button>
+                            </div>
+                            <div class="border-t pt-4 mt-4 space-y-4">
+                                <input type="hidden" id="proposalId">
+                                <input type="hidden" id="generatorClientId">
+                                <div class="flex flex-col md:flex-row gap-4 items-center">
+                                    <div class="relative flex-grow w-full">
+                                        <input type="text" id="clientName" placeholder="Nome do Cliente" class="p-3 border rounded-lg focus:ring-2 focus:ring-cyan-500 focus:outline-none w-full" autocomplete="off">
+                                        <div id="client-search-results" class="absolute z-10 w-full bg-white border border-gray-300 rounded-b-lg mt-1 max-h-48 overflow-y-auto hidden"></div>
+                                    </div>
+                                    <button id="generator-add-client-btn" class="w-full md:w-auto bg-cyan-100 text-cyan-800 font-semibold py-3 px-4 rounded-lg hover:bg-cyan-200 transition-all whitespace-nowrap">+ Cadastrar Cliente</button>
+                                </div>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <input type="text" id="clientCnpj" placeholder="CNPJ" class="p-3 border rounded-lg bg-gray-100" readonly>
+                                    <input type="text" id="clientAddress" placeholder="Endereço Completo" class="p-3 border rounded-lg md:col-span-2 bg-gray-100" readonly>
+                                    <input type="text" id="clientContactPerson" placeholder="Pessoa de Contato" class="p-3 border rounded-lg bg-gray-100" readonly>
+                                    <input type="text" id="clientContactRole" placeholder="Cargo do Contato" class="p-3 border rounded-lg bg-gray-100" readonly>
+                                    <input type="email" id="clientEmail" placeholder="E-mail" class="p-3 border rounded-lg bg-gray-100" readonly>
+                                    <input type="tel" id="clientPhone" placeholder="Telefone" class="p-3 border rounded-lg bg-gray-100" readonly>
+                                </div>
+                                <div class="md:col-span-2">
+                                    <label for="numVidas" class="font-medium">Número de Funcionários (Vidas):</label>
+                                    <input type="number" id="numVidas" value="10" min="0" class="w-full mt-1 p-3 border rounded-lg focus:ring-2 focus:ring-cyan-500 focus:outline-none">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="questionnaire-container" class="bg-white p-6 rounded-xl shadow-md border border-gray-200" style="display: none;">
+                            <h2 class="text-xl font-semibold text-cyan-800">2. Questionário Pré-Proposta</h2>
+                            <p class="text-sm text-gray-600 my-4">Para entendermos melhor suas necessidades, por favor, responda às perguntas abaixo. Isso nos ajudará a criar uma proposta mais alinhada à sua realidade.</p>
+                            <form id="questionnaire-form" class="space-y-6 max-h-[60vh] overflow-y-auto pr-4 border-t pt-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">1) Descreva de uma forma geral as atividades da empresa</label>
+                                    <textarea id="q-activities" rows="3" class="modal-input mt-1"></textarea>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">2) Possui quantas sedes?</label>
+                                    <input type="number" id="q-locations" class="modal-input mt-1 w-32" min="1" value="1">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">3) Dispõe de algum dos documentos abaixo:</label>
+                                    <div id="q-documents" class="mt-2 space-y-2 text-sm">
+                                        <label class="flex items-center"><input type="checkbox" class="h-4 w-4"> PCMSO</label>
+                                        <label class="flex items-center"><input type="checkbox" class="h-4 w-4"> PGR</label>
+                                        <label class="flex items-center"><input type="checkbox" class="h-4 w-4"> LTCAT</label>
+                                        <label class="flex items-center"><input type="checkbox" class="h-4 w-4"> ASOs atualizados</label>
+                                        <label class="flex items-center"><input type="checkbox" class="h-4 w-4"> Programa de Conservação Auditiva</label>
+                                        <label class="flex items-center"><input type="checkbox" class="h-4 w-4"> Laudo de Periculosidade</label>
+                                        <label class="flex items-center"><input type="checkbox" class="h-4 w-4"> Laudo de Insalubridade</label>
+                                        <label class="flex items-center"><input type="checkbox" class="h-4 w-4"> Análise Ergonômica</label>
+                                    </div>
+                                </div>
+                                <div class="question-group">
+                                    <label class="block text-sm font-medium text-gray-700">4) Possui CIPA constituída?</label>
+                                    <div class="flex gap-4 mt-1"><button type="button" data-group="cipa" class="q-btn">Sim</button><button type="button" data-group="cipa" class="q-btn active">Não</button></div>
+                                    <input type="hidden" id="q-cipa" value="Não">
+                                </div>
+                                <div class="question-group">
+                                    <label class="block text-sm font-medium text-gray-700">5) Tem atividades envolvidas com máquinas e equipamentos?</label>
+                                    <div class="flex gap-4 mt-1"><button type="button" data-group="machines" class="q-btn">Sim</button><button type="button" data-group="machines" class="q-btn active">Não</button></div>
+                                    <input type="hidden" id="q-machines" value="Não">
+                                </div>
+                                <div class="question-group">
+                                    <label class="block text-sm font-medium text-gray-700">6) Há trabalhadores que executam trabalho em altura e/ou espaço confinado?</label>
+                                    <div class="flex gap-4 mt-1"><button type="button" data-group="confined" class="q-btn">Sim</button><button type="button" data-group="confined" class="q-btn active">Não</button></div>
+                                    <input type="hidden" id="q-confined" value="Não">
+                                </div>
+                                <div class="question-group">
+                                    <label class="block text-sm font-medium text-gray-700">7) Há trabalhadores expostos a ruído excessivo?</label>
+                                    <div class="flex gap-4 mt-1"><button type="button" data-group="noise" class="q-btn">Sim</button><button type="button" data-group="noise" class="q-btn active">Não</button></div>
+                                    <input type="hidden" id="q-noise" value="Não">
+                                </div>
+                                <div class="question-group">
+                                    <label class="block text-sm font-medium text-gray-700">8) Há trabalhadores expostos ao calor?</label>
+                                    <div class="flex gap-4 mt-1"><button type="button" data-group="heat" class="q-btn">Sim</button><button type="button" data-group="heat" class="q-btn active">Não</button></div>
+                                    <input type="hidden" id="q-heat" value="Não">
+                                </div>
+                                <div class="question-group">
+                                    <label class="block text-sm font-medium text-gray-700">9) Há trabalhos que envolvam algum manuseio de eletricidade, material explosivo, combustível ou serviços de transporte com uso de motocicleta?</label>
+                                    <div class="flex gap-4 mt-1"><button type="button" data-group="danger" class="q-btn">Sim</button><button type="button" data-group="danger" class="q-btn active">Não</button></div>
+                                    <input type="hidden" id="q-danger" value="Não">
+                                </div>
+                                <div class="question-group">
+                                    <label class="block text-sm font-medium text-gray-700">10) Realiza algum trabalho que envolva utilização, manipulação ou transporte de material radioativo?</label>
+                                    <div class="flex gap-4 mt-1"><button type="button" data-group="radioactive" class="q-btn">Sim</button><button type="button" data-group="radioactive" class="q-btn active">Não</button></div>
+                                    <input type="hidden" id="q-radioactive" value="Não">
+                                </div>
+                                <div class="question-group">
+                                    <label class="block text-sm font-medium text-gray-700">11) Área construída da empresa é acima de 750 metros quadrados ou tem 02 ou mais pavimentos?</label>
+                                    <div class="flex gap-4 mt-1"><button type="button" data-group="area" class="q-btn">Sim</button><button type="button" data-group="area" class="q-btn active">Não</button></div>
+                                    <input type="hidden" id="q-area" value="Não">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">12) Outras informações que julgar necessário:</label>
+                                    <textarea id="q-other" rows="3" class="modal-input mt-1"></textarea>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div id="service-selection-container" class="bg-white p-6 rounded-xl shadow-md border border-gray-200" style="display: none;">
+                            <div class="flex justify-between items-center mb-4 border-b pb-2">
+                                <h2 class="text-xl font-semibold text-cyan-800">3. Seleção de Serviços</h2>
+                                <input type="text" id="service-search-input" placeholder="🔎 Buscar serviço..." class="p-2 border rounded-lg focus:ring-2 focus:ring-cyan-500 focus:outline-none">
+                            </div>
+                            <section>
+                                <h3 id="servicos-por-vida-title" class="font-semibold text-lg mb-3 text-cyan-900">Serviços por Vida (Custo Mensal por Funcionário)</h3>
+                                <div id="servicos-por-vida" class="space-y-4"></div>
+                            </section>
+                            <section class="mt-8">
+                                <h3 id="servicos-anuais-title" class="font-semibold text-lg mb-3 text-cyan-900">Serviços Contratuais (Custo Anual Amortizado Mensalmente)</h3>
+                                <div id="servicos-anuais" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+                            </section>
+                            <section class="mt-8">
+                                <div class="flex justify-between items-center">
+                                    <h3 class="font-semibold text-lg text-cyan-900">Serviços Avulsos (Custo Amortizado Mensalmente)</h3>
+                                    <button id="add-palestra" class="bg-cyan-100 text-cyan-800 font-semibold py-2 px-4 rounded-lg hover:bg-cyan-200 transition-all">+ Adicionar Palestra</button>
+                                </div>
+                                <div id="palestras-container" class="mt-3 space-y-3"></div>
+                                <div class="flex justify-between items-center mt-4">
+                                    <h3 class="font-semibold text-lg text-cyan-900 invisible">Outros Serviços</h3>
+                                    <button id="add-outro" class="bg-gray-100 text-gray-800 font-semibold py-2 px-4 rounded-lg hover:bg-gray-200 transition-all">+ Adicionar Outro Serviço</button>
+                                </div>
+                                <div id="outros-container" class="mt-3 space-y-3"></div>
+                            </section>
+                            <div id="client-proposal-actions">
+                                <button id="btn-generate-proposal" form="questionnaire-form" type="submit" class="w-full bg-green-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-700 transition-all shadow-md" style="display: none;">
+                                    Pedir Orçamento
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="lg:col-span-1">
+                        <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-200 sticky top-8 space-y-6">
+                            <div id="financial-parameters" class="financial-card">
+                                <h2 class="text-xl font-semibold mb-4 border-b pb-2 text-cyan-800">Parâmetros Financeiros</h2>
+                                <div class="space-y-3">
+                                    <div class="flex justify-between items-center">
+                                        <label for="tax-percent" class="font-medium">Imposto (%):</label>
+                                        <input type="number" id="tax-percent" value="12" class="percent-input">
+                                    </div>
+                                    <div class="flex justify-between items-center">
+                                        <label for="profit-percent" class="font-medium">Lucro Líquido (%):</label>
+                                        <input type="number" id="profit-percent" value="30" class="percent-input">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <h2 class="text-xl font-semibold mb-4 border-b pb-2 text-cyan-800">Resumo da Proposta</h2>
+                                <div id="resumo-detalhado" class="space-y-1 text-sm border-b pb-2 mb-2"></div>
+                                <div id="resumo-interno" class="space-y-2 text-sm">
+                                    <div class="flex justify-between font-bold"><span class="text-gray-600">Custo Operacional Mensal:</span> <span id="resumo-custo">R$ 0,00</span></div>
+                                    <div class="flex justify-between"><span class="text-gray-600">Impostos:</span> <span id="resumo-imposto" class="font-medium">R$ 0,00</span></div>
+                                    <div class="flex justify-between"><span class="text-gray-600">Lucro Líquido:</span> <span id="resumo-lucro" class="font-medium">R$ 0,00</span></div>
+                                </div>
+                                <div class="bg-cyan-50 p-3 rounded-lg mt-4">
+                                    <div class="flex justify-between items-center">
+                                        <p class="text-gray-700 font-semibold">VALOR FINAL MENSAL:</p>
+                                        <p id="valor-total-mensal" class="text-2xl font-extrabold text-cyan-700">R$ 0,00</p>
+                                    </div>
+                                </div>
+                                <div class="mt-4 space-y-2 text-sm">
+                                    <div class="flex justify-between font-medium">
+                                        <span>VALOR FINAL ANUAL:</span>
+                                        <span id="valor-total-anual">R$ 0,00</span>
+                                    </div>
+                                    <div class="flex justify-between font-medium">
+                                        <span>VALOR MENSAL POR VIDA:</span>
+                                        <span id="valor-mensal-por-vida">R$ 0,00</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="proposal-actions-container" class="mt-6 flex gap-2">
+                                <button id="btn-save-proposal" class="w-full bg-cyan-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-cyan-700 transition-all shadow-md">
+                                    Salvar Proposta
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tab-clients" class="tab-content">
+                <div class="bg-white p-6 rounded-xl shadow-md border border-gray-200">
+                    <div class="flex justify-between items-center mb-4 pb-2 border-b">
+                        <h2 class="text-xl font-semibold text-cyan-800">Clientes Cadastrados</h2>
+                        <button id="add-client-btn" class="bg-cyan-100 text-cyan-800 font-semibold py-2 px-4 rounded-lg hover:bg-cyan-200 transition-all">+ Adicionar Cliente</button>
+                    </div>
+                    <div class="mb-4">
+                        <input type="text" id="client-search-input" placeholder="Pesquisar por nome ou CNPJ..." class="w-full p-2 border rounded-lg">
+                    </div>
+                    <div id="clients-list-container" class="space-y-3"></div>
+                </div>
+            </div>
+
+            <div id="tab-preview-proposal" class="tab-content">
+                <div class="no-print mb-4 flex justify-end gap-2">
+                    <button id="export-word-btn" class="bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700 transition-all">
+                        Exportar para Word (.doc)
+                    </button>
+                    <button id="export-pdf-btn" class="bg-red-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-red-700 transition-all">
+                        Exportar para PDF
+                    </button>
+                </div>
+                <div id="proposal-preview-content" contenteditable="true" class="printable-area bg-white p-8 shadow-lg prose max-w-none"></div>
+            </div>
+            <div id="tab-preview-contract" class="tab-content printable-area bg-white p-8 shadow-lg"></div>
+
+            <div id="tab-saved" class="tab-content">
+                <div class="bg-white p-6 rounded-xl shadow-md border border-gray-200">
+                    <h2 class="text-xl font-semibold mb-4 border-b pb-2 text-cyan-800">Propostas Salvas</h2>
+                    <div id="saved-proposals-container" class="space-y-3"></div>
+                    <div class="mt-8">
+                        <h2 class="text-xl font-semibold mb-4 border-b pb-2 text-cyan-800">Log de Ações das Propostas</h2>
+                        <div id="proposal-log-container" class="space-y-2 text-sm text-gray-700 max-h-60 overflow-y-auto bg-gray-50 p-4 rounded-lg"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tab-prices" class="tab-content">
+                <div class="bg-white p-6 rounded-xl shadow-md border border-gray-200">
+                    <div class="flex justify-between items-center mb-4 pb-2 border-b">
+                        <h2 class="text-xl font-semibold text-cyan-800">Tabela de Preços Editável</h2>
+                        <button id="add-service-btn" class="bg-cyan-100 text-cyan-800 font-semibold py-2 px-4 rounded-lg hover:bg-cyan-200 transition-all">+ Adicionar Serviço</button>
+                    </div>
+                    <div class="bg-gray-50 p-4 rounded-lg mb-6">
+                        <h3 class="font-semibold text-lg mb-3 text-cyan-900">Reajuste de Preços</h3>
+                        <div class="flex items-center gap-4">
+                            <div class="flex-grow">
+                                <label for="adjustment-percent" class="block text-sm font-medium text-gray-700">Percentagem de Reajuste (%)</label>
+                                <input type="number" id="adjustment-percent" class="p-2 border rounded-lg w-full mt-1" placeholder="Ex: 10">
+                            </div>
+                            <button id="open-adjustment-modal-btn" class="bg-orange-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-orange-600 transition-all mt-6">Selecionar Serviços e Reajustar</button>
+                        </div>
+                    </div>
+
+                    <div class="mb-8">
+                        <div class="flex justify-between items-center mb-4 pb-2 border-b">
+                            <h2 class="text-xl font-semibold text-cyan-800">Gerenciar Categorias de Serviço</h2>
+                            <button id="add-category-btn" class="bg-green-100 text-green-800 font-semibold py-2 px-4 rounded-lg hover:bg-green-200 transition-all">+ Adicionar Categoria</button>
+                        </div>
+                        <div id="category-list-container" class="space-y-2">
+                            <!-- As categorias serão renderizadas aqui -->
+                        </div>
+                    </div>
+
+                    <div id="price-table-container" class="space-y-8"></div>
+                    <div class="mt-8">
+                        <h2 class="text-xl font-semibold mb-4 border-b pb-2 text-cyan-800">Log de Alterações de Preços</h2>
+                        <div id="price-log-container" class="space-y-2 text-sm text-gray-700 max-h-60 overflow-y-auto bg-gray-50 p-4 rounded-lg"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div> <script type="module">
+    // --- MÓDULOS FIREBASE ---
+    import {
+        initializeApp
+    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+
+    import {
+        getAuth,
+        onAuthStateChanged,
+        createUserWithEmailAndPassword,
+        signInWithEmailAndPassword,
+        signOut,
+        sendPasswordResetEmail
+    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+
+    import {
+        getFirestore,
+        doc,
+        getDoc,
+        setDoc,
+        addDoc,
+        updateDoc,
+        deleteDoc,
+        onSnapshot,
+        collection,
+        query,
+        serverTimestamp,
+        writeBatch,
+        arrayUnion
+    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    document.addEventListener('DOMContentLoaded', () => {
+        // --- CONFIGURAÇÃO FIREBASE --- 
+        const firebaseConfig = {
+            apiKey: "AIzaSyDo10f_5Lqy1fhhcW1K6sEpmYRymuAHhFk",
+            authDomain: "medmais-propostas.firebaseapp.com",
+            projectId: "medmais-propostas",
+            storageBucket: "medmais-propostas.firebasestorage.app",
+            messagingSenderId: "90461507786",
+            appId: "1:90461507786:web:34155e967df3bfefafe433",
+            measurementId: "G-B6825JHC2Y"
+        };
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+        // Inicializa Firebase 
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+
+        // --- VARIÁVEIS GLOBAIS E ESTADO --- 
+        let dbRef = {
+            config: doc(db, `artifacts/${appId}/public/data/appConfig/main`),
+            proposals: null,
+            clients: null,
+            logs: null
+        };
+        let userId = null;
+        let userEmail = null;
+        let priceState = {};
+        let savedProposals = [];
+        let clients = [];
+        let priceLogEntries = [];
+        let proposalLogEntries = [];
+        let serviceCategories = [];
+        let unsubscribeProposals;
+        let unsubscribePublicProposals;
+        let unsubscribeClients;
+        let unsubscribeLogs;
+
+        let vendorProposals = [];
+        let publicProposals = [];
+
+        let isInitialLoad = true;
+        let configListenerAttached = false;
+
+        // --- DADOS INICIAIS (FALLBACK) --- 
+        const TIERS = [{
+            min: 0,
+            max: 9,
+            label: '0-9'
+        }, {
+            min: 10,
+            max: 19,
+            label: '10-19'
+        }, {
+            min: 20,
+            max: 49,
+            label: '20-49'
+        }, {
+            min: 50,
+            max: 100,
+            label: '50-100'
+        }, {
+            min: 101,
+            max: 150,
+            label: '101-150'
+        }, {
+            min: 151,
+            max: 200,
+            label: '151-200'
+        }, {
+            min: 201,
+            max: 250,
+            label: '201-250'
+        }, {
+            min: 251,
+            max: 300,
+            label: '251-300'
+        }, {
+            min: 301,
+            max: 500,
+            label: '301-500'
+        }];
+
+        function buildTiers(prices) {
+            return TIERS.map((tier, i) => ({ ...tier,
+                valor: prices[i]
+            }));
+        }
+
+        const initialPriceData = {
+            serviceCategories: [
+                { id: 'programas', name: 'Programas' },
+                { id: 'laudos', name: 'Laudos' },
+                { id: 'treinamentos', name: 'Treinamentos' },
+                { id: 'servicos_administrativos', name: 'Serviços Administrativos' },
+                { id: 'avaliacoes_quantitativas', name: 'Avaliações Quantitativas' },
+                { id: 'medicina', name: 'Medicina' },
+                { id: 'engenharia', name: 'Engenharia' },
+            ],
+            // SEU OBJETO DE DADOS INICIAIS (PRESERVADO)
+            porVida: [{
+                id: 'custo_adm',
+                nome: 'Custo Administrativo',
+                descricao: 'Gestão administrativa e operacional dos serviços de saúde e segurança do trabalho contratados.',
+                precos: buildTiers(Array(9).fill(10.56)),
+                categoryId: 'servicos_administrativos'
+            }, {
+                id: 'gestao_abs',
+                nome: 'Gestão de Absenteísmo',
+                descricao: 'Monitoramento e análise das ausências ao trabalho por motivos de saúde, com o objetivo de identificar causas e propor ações preventivas e corretivas.',
+                precos: buildTiers([15, 14, 13, 12, 11, 10, 10, 10, 10]),
+                categoryId: 'medicina'
+            }, {
+                id: 'uso_soc',
+                nome: 'Uso do SOC',
+                descricao: 'Disponibilização de acesso ao SOC, sistema integrado para gestão de Saúde e Segurança do Trabalho.',
+                precos: buildTiers(Array(9).fill(0.90)),
+                categoryId: 'servicos_administrativos'
+            }],
+            anual: [{
+                id: 'pcmso',
+                nome: 'PCMSO',
+                tipo: 'fixo',
+                descricao: 'Elaboração e coordenação do Programa de Controle Médico de Saúde Ocupacional, incluindo a emissão do Relatório Analítico Anual, em conformidade com a NR-7.',
+                precos: buildTiers([250, 350, 450, 550, 650, 750, 900, 1000, 1200]),
+                categoryId: 'programas'
+            }, {
+                id: 'pgr',
+                nome: 'PGR',
+                tipo: 'fixo',
+                descricao: 'Elaboração e acompanhamento do Programa de Gerenciamento de Riscos, conforme a NR-1.',
+                precos: buildTiers([135, 165, 215, 297.50, 350, 430, 485, 515, 537.50]),
+                categoryId: 'programas'
+            }, {
+                id: 'ltcat',
+                nome: 'LTCAT',
+                tipo: 'fixo',
+                descricao: 'Elaboração do Laudo Técnico das Condições do Ambiente de Trabalho para fins de aposentadoria especial.',
+                precos: buildTiers([162.50, 215, 270, 322.50, 380, 430, 515, 565, 645]),
+                categoryId: 'laudos'
+            }, {
+                id: 'gestao_esocial',
+                nome: 'Gestão de SST para o eSocial',
+                tipo: 'fixo',
+                preco: 0.01,
+                descricao: 'Emissão e envio das informações de SST dos layouts 2210 (Comunicação de Acidente de Trabalho), 2220 (Monitoramento da Saúde do Trabalhador - ASO) e 2240 (Condições Ambientais do Trabalho). Serviços complementares do eSocial solicitar orçamento! Como por exemplo layout 2230 – Afastamento Temporário - Atestados médicos.',
+                categoryId: 'servicos_administrativos'
+            }, {
+                id: 'palestras_anuais',
+                nome: 'Palestras Anuais (Palestrão)',
+                tipo: 'fixo',
+                preco: 0.01,
+                descricao: 'Palestras ministradas anualmente conforme programação preventiva do PCMSO/PGR, em formato palestrão, em data fornecida pela MedMais.',
+                categoryId: 'treinamentos'
+            }, {
+                id: 'visita_tecnica',
+                nome: 'Visita Técnica no Local',
+                tipo: 'fixo',
+                preco: 0.01,
+                descricao: 'Avaliação qualitativa dos riscos laborais realizadas por técnico ou engenheiro de segurança do trabalho. Serviços complementares de Engenheira de Segurança devem solicitar orçamento, como por exemplo medições quantitativas como de ruído e calor.',
+                categoryId: 'engenharia'
+            }, {
+                id: 'emissao_aso',
+                nome: 'Emissão de ASO',
+                tipo: 'fixo',
+                preco: 0.01,
+                descricao: 'Atestado de Saúde Ocupacional emitidos para funcionários CLT, sendo realizados na sede da MedMais ou na sede da contratante se assim for incluído na proposta.',
+                categoryId: 'medicina'
+            }, {
+                id: 'risco_psicossocial',
+                nome: 'Avaliação de Fatores de Risco Psicossociais',
+                tipo: 'fixo',
+                precos: buildTiers([500.5, 669.50, 864.50, 1101.75, 1300, 1534, 1800.50, 1969.50, 2258.75]),
+                descricao: 'Fase 1: Planejamento Estratégico e Alinhamento<br>• Reunião inicial com a gestão e o RH para definir o escopo, o cronograma e os grupos participantes.<br>• Apresentação da metodologia e validação do plano de comunicação interna.<br>Fase 2: Comunicação e Sensibilização dos Colaboradores<br>• Fornecimento de material e orientação para a comunicação interna sobre a importância, os objetivos e a confidencialidade do processo.<br>Fase 3: Aplicação de Ferramenta Validada<br>• Aplicação de questionário online, sigiloso e confidencial, baseado em metodologia cientificamente validada.<br>Fase 4: Análise de Dados e Relatório Técnico<br>• Análise estatística dos dados e elaboração de um relatório consolidado e 100% anônimo.<br>Fase 5: Apresentação de Resultados e Recomendações<br>• Reunião com a gestão para apresentar os resultados e desenvolver um Plano de Ação.<br>Fase 6: Integração ao PGR e PCMSO<br>• Inclusão formal dos riscos psicossociais no Inventário de Riscos do PGR e atualização do PCMSO.',
+                categoryId: 'programas'
+            }, {
+                id: 'insalubridade',
+                nome: 'Laudo de Insalubridade',
+                tipo: 'fixo',
+                descricao: 'Análise técnica das condições de trabalho para caracterização de atividades ou operações insalubres, conforme a NR-15.',
+                precos: buildTiers([165, 220, 275, 330, 385, 440, 515, 565, 645]),
+                categoryId: 'laudos'
+            }, {
+                id: 'periculosidade',
+                nome: 'Laudo de Periculosidade',
+                tipo: 'fixo',
+                descricao: 'Análise técnica para caracterização de atividades e operações perigosas que envolvem riscos acentuados, conforme a NR-16.',
+                precos: buildTiers([165, 215, 270, 322.50, 377.50, 430, 515, 565, 645]),
+                categoryId: 'laudos'
+            }, {
+                id: 'aep',
+                nome: 'Análise Ergonômica (AEP)',
+                tipo: 'fixo',
+                descricao: 'Realização da Análise Ergonômica Preliminar para identificar e avaliar os riscos ergonômicos, de acordo com a NR-17.',
+                precos: buildTiers([720, 840, 960, 1080, 1200, 1320, 1440, 1560, 1680]),
+                categoryId: 'laudos'
+            }, {
+                id: 'mapa_risco',
+                nome: 'Mapa de Risco',
+                tipo: 'fixo',
+                descricao: 'Elaboração do Mapa de Riscos, representando graficamente os riscos existentes nos locais de trabalho.',
+                precos: buildTiers([60, 90, 150, 207.50, 267.50, 295, 355, 502.50, 592.50]),
+                categoryId: 'engenharia'
+            }, {
+                id: 'pca',
+                nome: 'PCA',
+                tipo: 'fixo',
+                descricao: 'Desenvolvimento do Programa de Conservação Auditiva para prevenir ou estabilizar as perdas auditivas ocupacionais.',
+                precos: buildTiers([150, 250, 350, 450, 550, 650, 800, 900, 1000]),
+                categoryId: 'programas'
+            }, {
+                id: 'ppr',
+                nome: 'PPR',
+                tipo: 'fixo',
+                descricao: 'Implementação do Programa de Proteção Respiratória, estabelecendo procedimentos para a seleção e uso de EPIs.',
+                precos: buildTiers([150, 250, 350, 450, 550, 650, 800, 900, 1000]),
+                categoryId: 'programas'
+            }, {
+                id: 'perfuro',
+                nome: 'Plano de Perfuro-Cortante',
+                tipo: 'fixo',
+                descricao: 'Elaboração do Plano de Prevenção de Riscos de Acidentes com Materiais Perfurocortantes, conforme a NR-32.',
+                precos: buildTiers([150, 250, 350, 450, 550, 650, 800, 900, 1000]),
+                categoryId: 'programas'
+            }, {
+                id: 'art_pgr',
+                nome: 'ART para PGR',
+                tipo: 'fixo',
+                preco: 105,
+                descricao: 'Emissão da Anotação de Responsabilidade Técnica junto ao CREA para o PGR.',
+                categoryId: 'engenharia'
+            }, {
+                id: 'art_ltcat',
+                nome: 'ART para LTCAT',
+                tipo: 'fixo',
+                preco: 105,
+                descricao: 'Emissão da Anotação de Responsabilidade Técnica junto ao CREA para o LTCAT.',
+                categoryId: 'engenharia'
+            }, {
+                id: 'atend_in_company',
+                nome: 'Atendimento in Company',
+                tipo: 'quantidade',
+                obs: 'atendimentos',
+                preco: 400,
+                sugestao_fator: 1.5,
+                sugestao_divisor: 16,
+                descricao: 'Realização de atendimentos médicos ocupacionais nas instalações do cliente.',
+                categoryId: 'medicina'
+            }, {
+                id: 'ordem_servico',
+                nome: 'Emissão de Ordens de Serviço',
+                tipo: 'quantidade',
+                obs: 'ordens',
+                preco: 50,
+                sugestao_fator: 1.5,
+                descricao: 'Elaboração e fornecimento de Ordens de Serviço de Segurança e Saúde no Trabalho, conforme a NR-1.',
+                categoryId: 'servicos_administrativos'
+            }, {
+                id: 'medicao_ruido',
+                nome: 'Medição de Ruído',
+                tipo: 'quantidade',
+                obs: 'pontos',
+                preco: 150,
+                descricao: 'Avaliação quantitativa dos níveis de pressão sonora (dosimetria de ruído).',
+                categoryId: 'avaliacoes_quantitativas'
+            }, {
+                id: 'medicao_calor',
+                nome: 'Medição de Calor',
+                tipo: 'quantidade',
+                obs: 'pontos',
+                preco: 150,
+                descricao: 'Avaliação quantitativa da exposição ao calor (IBUTG).',
+                categoryId: 'avaliacoes_quantitativas'
+            }, {
+                id: 'cipa',
+                nome: 'Treinamento CIPA',
+                tipo: 'fixo',
+                preco: 600,
+                descricao: 'Capacitação dos membros da Comissão Interna de Prevenção de Acidentes (CIPA), conforme a NR-5.',
+                categoryId: 'treinamentos'
+            }, {
+                id: 'brigada',
+                nome: 'Treinamento Brigada',
+                tipo: 'fixo',
+                preco: 800,
+                descricao: 'Treinamento teórico e prático para os membros da Brigada de Incêndio.',
+                categoryId: 'treinamentos'
+            }, {
+                id: 'nr35',
+                nome: 'Treinamento NR 35',
+                tipo: 'quantidade',
+                obs: 'por turma',
+                preco: 850,
+                descricao: 'Capacitação para trabalho em altura, conforme a NR-35.',
+                categoryId: 'treinamentos'
+            }, {
+                id: 'nr33',
+                nome: 'Treinamento NR 33',
+                tipo: 'quantidade',
+                obs: 'por turma',
+                preco: 950,
+                descricao: 'Capacitação para trabalhadores e vigias que atuam em espaços confinados, conforme a NR-33.',
+                categoryId: 'treinamentos'
+            }, {
+                id: 'nr12',
+                nome: 'Treinamento NR 12',
+                tipo: 'quantidade',
+                obs: 'por aluno',
+                precos: buildTiers([100, 60, 70, 80, 90, 100, 110, 120, 130]),
+                descricao: 'Capacitação para a operação segura de máquinas e equipamentos, conforme a NR-12.',
+                categoryId: 'treinamentos'
+            }, ],
+            palestra: {
+                precos: buildTiers(Array(9).fill(600)),
+                descricao: 'Palestra com tema customizado sobre saúde e segurança, realizada nas instalações do cliente.'
+            }
+        };
+
+        // --- DOM Elements --- 
+        const loaderElem = document.getElementById('loader');
+        const formElements = {
+            id: document.getElementById('proposalId'),
+            generatorClientId: document.getElementById('generatorClientId'),
+            clientName: document.getElementById('clientName'),
+            clientCnpj: document.getElementById('clientCnpj'),
+            clientAddress: document.getElementById('clientAddress'),
+            clientContactPerson: document.getElementById('clientContactPerson'),
+            clientContactRole: document.getElementById('clientContactRole'),
+            clientEmail: document.getElementById('clientEmail'),
+            clientPhone: document.getElementById('clientPhone'),
+            numVidas: document.getElementById('numVidas'),
+            tax: document.getElementById('tax-percent'),
+            profit: document.getElementById('profit-percent')
+        };
+        const resumo = {
+            custo: document.getElementById('resumo-custo'),
+            imposto: document.getElementById('resumo-imposto'),
+            lucro: document.getElementById('resumo-lucro'),
+            totalMensal: document.getElementById('valor-total-mensal'),
+            totalAnual: document.getElementById('valor-total-anual'),
+            mensalPorVida: document.getElementById('valor-mensal-por-vida'),
+            detalhado: document.getElementById('resumo-detalhado')
+        };
+        const proposalPreviewContainer = document.getElementById('proposal-preview-content');
+        const contractPreviewContainer = document.getElementById('tab-preview-contract');
+        const savedProposalsContainer = document.getElementById('saved-proposals-container');
+        const priceLogContainer = document.getElementById('price-log-container');
+        const proposalLogContainer = document.getElementById('proposal-log-container');
+
+        const loginModal = document.getElementById('login-modal');
+        const mainAppContainer = document.getElementById('main-app-container');
+        const loginForm = document.getElementById('login-form');
+        const loginMessage = document.getElementById('login-message');
+        const btnLogout = document.getElementById('btn-logout');
+        const forgotPasswordLink = document.getElementById('forgot-password-link');
+        const userInfoDisplay = document.getElementById('user-info-display');
+
+
+        // --- Máscaras de Input ---
+        const cnpjMaskOptions = { mask: '00.000.000/0000-00' };
+        const phoneMaskOptions = { mask: '(00) 00000-0000' };
+
+        IMask(document.getElementById('clientCnpj'), cnpjMaskOptions);
+        IMask(document.getElementById('clientPhone'), phoneMaskOptions);
+        IMask(document.getElementById('client-modal-cnpj'), cnpjMaskOptions);
+        IMask(document.getElementById('client-modal-phone'), phoneMaskOptions);
+
+        // --- Funções Auxiliares --- 
+        const formatCurrency = (value) => (value || 0).toLocaleString('pt-BR', {
+            style: 'currency',
+            currency: 'BRL'
+        });
+
+        // --- LÓGICA DE VALIDAÇÃO DO CLIENTE ---
+        const questionnaireContainer = document.getElementById('questionnaire-container');
+        const serviceSelectionContainer = document.getElementById('service-selection-container');
+        const clientNameField = document.getElementById('clientName');
+        const clientEmailField = document.getElementById('clientEmail');
+        const clientPhoneField = document.getElementById('clientPhone');
+
+
+        const parseCurrency = (value) => parseFloat(String(value).replace(/[^0-9,-]+/g, "").replace(',', '.')) || 0;
+        const getPriceFromState = (vidas, precos) => {
+            if (!precos || !Array.isArray(precos)) return 0;
+            const tier = precos.find(t => vidas >= t.min && vidas <= t.max);
+            return tier ? tier.valor : (precos[precos.length - 1] ?.valor || 0);
+        };
+
+        // --- Funções de UI (Modal, Toast) --- 
+        const modal = {
+            overlay: document.getElementById('confirmation-modal'),
+            title: document.getElementById('modal-title'),
+            message: document.getElementById('modal-message'),
+            confirmBtn: document.getElementById('modal-confirm-btn'),
+            cancelBtn: document.getElementById('modal-cancel-btn'),
+            show: (title, message, onConfirm) => {
+                modal.title.textContent = title;
+                modal.message.textContent = message;
+                modal.overlay.classList.add('visible');
+
+                const confirmHandler = () => {
+                    onConfirm();
+                    modal.hide();
+                };
+
+                const cancelHandler = () => {
+                    modal.hide();
+                };
+
+                modal.confirmBtn.onclick = confirmHandler;
+                modal.cancelBtn.onclick = cancelHandler;
+            },
+            hide: () => {
+                modal.overlay.classList.remove('visible');
+                modal.confirmBtn.onclick = null;
+                modal.cancelBtn.onclick = null;
+            }
+        };
+
+        const addServiceModal = {
+            overlay: document.getElementById('add-service-modal'),
+            form: document.getElementById('add-service-form'),
+            cancelBtn: document.getElementById('modal-add-cancel-btn'),
+            categorySelect: document.getElementById('service-category-select'),
+            show: () => {
+                addServiceModal.categorySelect.innerHTML = serviceCategories.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+                addServiceModal.overlay.classList.add('visible');
+            },
+            hide: () => {
+                addServiceModal.overlay.classList.remove('visible');
+                addServiceModal.form.reset();
+            }
+        };
+
+        const editServiceModal = {
+            overlay: document.getElementById('edit-service-modal'),
+            form: document.getElementById('edit-service-form'),
+            cancelBtn: document.getElementById('modal-edit-cancel-btn'),
+            serviceIdInput: document.getElementById('edit-service-id'),
+            serviceOriginalCategoryInput: document.getElementById('edit-service-original-category'),
+            serviceNameInput: document.getElementById('edit-service-name'),
+            billingModelSelect: document.getElementById('edit-service-billing-model'),
+            categorySelect: document.getElementById('edit-service-category-select'),
+            servicePricingTypeSelect: document.getElementById('edit-service-pricing-type'),
+            serviceTypeWrapper: document.getElementById('edit-service-type-wrapper'),
+            serviceTypeSelect: document.getElementById('edit-service-type'),
+            serviceDescriptionInput: document.getElementById('edit-service-description'),
+            show: (service) => {
+                editServiceModal.serviceIdInput.value = service.id;
+                editServiceModal.serviceOriginalCategoryInput.value = service.category;
+                editServiceModal.serviceNameInput.value = service.nome;
+                editServiceModal.serviceDescriptionInput.value = service.descricao;
+                editServiceModal.billingModelSelect.value = service.category;
+
+                editServiceModal.categorySelect.innerHTML = serviceCategories.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+                if (service.categoryId) {
+                    editServiceModal.categorySelect.value = service.categoryId;
+                }
+
+
+                if (service.precos) {
+                    editServiceModal.servicePricingTypeSelect.value = 'faixa';
+                } else {
+                    editServiceModal.servicePricingTypeSelect.value = 'fixo';
+                    editServiceModal.serviceTypeSelect.value = service.tipo || 'fixo';
+                }
+                editServiceModal.servicePricingTypeSelect.dispatchEvent(new Event('change'));
+                editServiceModal.overlay.classList.add('visible');
+            },
+            hide: () => {
+                editServiceModal.overlay.classList.remove('visible');
+                editServiceModal.form.reset();
+            }
+        };
+
+        const clientModal = {
+            overlay: document.getElementById('client-modal'),
+            form: document.getElementById('client-form'),
+            title: document.getElementById('client-modal-title'),
+            cancelBtn: document.getElementById('modal-client-cancel-btn'),
+            idInput: document.getElementById('clientId'),
+            nameInput: document.getElementById('client-modal-name'),
+            cnpjInput: document.getElementById('client-modal-cnpj'),
+            addressInput: document.getElementById('client-modal-address'),
+            contactPersonInput: document.getElementById('client-modal-contact-person'),
+            contactRoleInput: document.getElementById('client-modal-contact-role'),
+            phoneInput: document.getElementById('client-modal-phone'),
+            emailInput: document.getElementById('client-modal-email'),
+            typeInput: document.getElementById('client-modal-type'),
+            cnaeInput: document.getElementById('client-modal-cnae'),
+            show: (client = null) => {
+                clientModal.form.reset();
+                if (client) {
+                    clientModal.title.textContent = "Editar Cliente";
+                    clientModal.idInput.value = client.id;
+                    clientModal.nameInput.value = client.name || '';
+                    clientModal.cnpjInput.value = client.cnpj || '';
+                    clientModal.addressInput.value = client.address || '';
+                    clientModal.contactPersonInput.value = client.contactPerson || '';
+                    clientModal.contactRoleInput.value = client.contactRole || '';
+                    clientModal.phoneInput.value = client.phone || '';
+                    clientModal.emailInput.value = client.email || '';
+                    clientModal.typeInput.value = client.type || '';
+                    clientModal.cnaeInput.value = client.cnae || '';
+                } else {
+                    clientModal.title.textContent = "Adicionar Novo Cliente";
+                    clientModal.idInput.value = '';
+                }
+                clientModal.overlay.classList.add('visible');
+            },
+            hide: () => {
+                clientModal.overlay.classList.remove('visible');
+            }
+        };
+
+        const priceAdjustmentModal = {
+            overlay: document.getElementById('price-adjustment-modal'),
+            form: document.getElementById('price-adjustment-form'),
+            selectAllCheckbox: document.getElementById('select-all-services'),
+            cancelBtn: document.getElementById('modal-adjustment-cancel-btn'),
+            applyBtn: document.getElementById('apply-adjustment-btn'),
+            show: () => priceAdjustmentModal.overlay.classList.add('visible'),
+            hide: () => priceAdjustmentModal.overlay.classList.remove('visible')
+        };
+
+        const proposalDetailsModal = {
+            overlay: document.getElementById('proposal-details-modal'),
+            form: document.getElementById('proposal-details-form'),
+            proposalIdInput: document.getElementById('details-proposal-id'),
+            statusSelect: document.getElementById('proposal-status'),
+            observationsInput: document.getElementById('proposal-observations'),
+            historyContainer: document.getElementById('proposal-history-container'),
+            cancelBtn: document.getElementById('modal-details-cancel-btn'),
+            show: () => proposalDetailsModal.overlay.classList.add('visible'),
+            hide: () => {
+                proposalDetailsModal.overlay.classList.remove('visible');
+                proposalDetailsModal.form.reset();
+            }
+        };
+
+        const categoryModal = {
+            overlay: document.getElementById('category-modal'),
+            form: document.getElementById('category-form'),
+            title: document.getElementById('category-modal-title'),
+            idInput: document.getElementById('categoryId-modal'),
+            nameInput: document.getElementById('category-name'),
+            cancelBtn: document.getElementById('modal-category-cancel-btn'),
+            show: (category = null) => {
+                categoryModal.form.reset();
+                if (category) {
+                    categoryModal.title.textContent = "Editar Categoria";
+                    categoryModal.idInput.value = category.id;
+                    categoryModal.nameInput.value = category.name;
+                } else {
+                    categoryModal.title.textContent = "Adicionar Nova Categoria";
+                    categoryModal.idInput.value = '';
+                }
+                categoryModal.overlay.classList.add('visible');
+            },
+            hide: () => {
+                categoryModal.overlay.classList.remove('visible');
+            }
+        };
+
+        const toast = {
+            element: document.getElementById('toast-notification'),
+            message: document.getElementById('toast-message'),
+            show: (message) => {
+                toast.message.textContent = message;
+                toast.element.classList.add('show');
+                setTimeout(() => toast.element.classList.remove('show'), 3000);
+            }
+        };
+
+        // --- Funções de Lógica Principal --- 
+        async function addLogEntry(logType, entry) {
+            if (!dbRef.logs) return;
+            const collectionName = logType === 'price' ? 'priceLog' : 'proposalLog';
+            try {
+                await addDoc(collection(dbRef.logs, collectionName), { ...entry,
+                    timestamp: serverTimestamp()
+                });
+            } catch (error) {
+                console.error("Erro ao adicionar log:", error);
+            }
+        }
+
+        function renderPriceLog() {
+            if (!priceLogContainer) return;
+            priceLogContainer.innerHTML = priceLogEntries.map(log => {
+                const timestamp = log.timestamp ?.toDate().toLocaleString('pt-BR') || '...';
+                if (log.action) {
+                    return `<div class="p-2 border-b border-gray-200">
+                                        <p><strong class="font-mono text-cyan-700">${timestamp}</strong></p>
+                                        <p>${log.action}</p>
+                                    </div>`;
+                }
+                return `<div class="p-2 border-b border-gray-200">
+                                        <p><strong class="font-mono text-cyan-700">${timestamp}</strong></p>
+                                        <p><strong>Serviço:</strong> ${log.serviceName} ${log.tierLabel ? `(${log.tierLabel})` : ''}</p>
+                                        <p>Valor alterado de <strong class="text-red-600">${formatCurrency(log.oldValue)}</strong> para <strong class="text-green-600">${formatCurrency(log.newValue)}</strong>.</p>
+                                    </div>`;
+            }).join('');
+        }
+
+        function renderProposalLog() {
+            if (!proposalLogContainer) return;
+            proposalLogContainer.innerHTML = proposalLogEntries.map(log => {
+                const timestamp = log.timestamp ?.toDate().toLocaleString('pt-BR') || '...';
+                return `<div class="p-2 border-b border-gray-200">
+                                        <p><strong class="font-mono text-cyan-700">${timestamp}</strong></p>
+                                        <p>${log.action}</p>
+                                    </div>`;
+            }).join('');
+        }
+
+        async function saveProposal() {
+            const proposalData = getFormData();
+            if (!proposalData.clientData.clientName) {
+                toast.show('Por favor, preencha o nome da empresa.');
+                return;
+            }
+
+            const clientToSave = {
+                id: proposalData.clientData.generatorClientId,
+                name: proposalData.clientData.clientName,
+                cnpj: proposalData.clientData.clientCnpj,
+                address: proposalData.clientData.clientAddress,
+                contactPerson: proposalData.clientData.clientContactPerson,
+                contactRole: proposalData.clientData.clientContactRole,
+                email: proposalData.clientData.clientEmail,
+                phone: proposalData.clientData.clientPhone
+            };
+
+            const savedClientId = await saveClient(clientToSave, false);
+
+            proposalData.clientData.id = savedClientId;
+            const isUpdate = !!proposalData.clientData.proposalId;
+            const proposalId = isUpdate ? proposalData.clientData.proposalId : doc(collection(db, 'dummy')).id;
+
+            proposalData.clientData.proposalId = proposalId;
+            proposalData.clientData.lastSaved = new Date().toISOString();
+
+            if (!isUpdate) {
+                proposalData.status = "Criada";
+                proposalData.history = [{
+                    status: "Criada",
+                    timestamp: new Date().toISOString(),
+                    observation: "Proposta gerada no sistema."
+                }];
+            }
+
+            const proposalRef = doc(dbRef.proposals, proposalId);
+
+            try {
+                await setDoc(proposalRef, proposalData, {
+                    merge: true
+                });
+                const action = `Proposta para <strong>${proposalData.clientData.clientName}</strong> ${isUpdate ? 'atualizada' : 'criada'}.`;
+                addLogEntry('proposal', {
+                    action
+                });
+                toast.show('Proposta salva com sucesso na nuvem!');
+            } catch (error) {
+                console.error("Erro ao salvar proposta: ", error);
+                toast.show('Erro ao salvar a proposta.');
+            }
+        }
+
+        function loadProposal(proposalId) {
+            const proposal = savedProposals.find(p => p.id === proposalId);
+            if (!proposal) return;
+
+            clearForm(false);
+
+            for (const key in proposal.clientData) {
+                if (formElements[key]) formElements[key].value = proposal.clientData[key];
+            }
+
+            Object.keys(proposal.services).forEach(category => {
+                const services = proposal.services[category];
+                if (Array.isArray(services)) {
+                    services.forEach(s => {
+                        if (s.id === 'palestra' || s.id === 'outro') {
+                            const containerId = s.id === 'palestra' ? 'palestras-container' : 'outros-container';
+                            createDynamicRow(containerId, s.id === 'palestra' ? 'Tema da Palestra' : 'Descrição do Serviço', runAllUpdates, s.price, s.theme);
+                        } else {
+                            const card = document.querySelector(`.service-card[data-id="${s.id}"]`);
+                            if (card) {
+                                if (!card.classList.contains('selected')) card.click();
+                                const priceInput = card.querySelector('.price-input');
+                                if (priceInput) {
+                                    priceInput.value = s.price.toFixed(2).replace('.', ',');
+                                }
+                                if (card.querySelector('.quantity-input')) card.querySelector('.quantity-input').value = s.quantity;
+                                if (card.querySelector('.frequency-selector')) card.querySelector('.frequency-selector').value = s.frequency;
+                            }
+                        }
+                    });
+                }
+            });
+
+            runAllUpdates();
+            addLogEntry('proposal', {
+                action: `Proposta para <strong>${proposal.clientData.clientName}</strong> carregada.`
+            });
+        }
+
+        function deleteProposal(proposalId) {
+            const proposal = savedProposals.find(p => p.id === proposalId);
+            if (!proposal) return;
+
+            modal.show(
+                'Excluir Proposta',
+                `Tem certeza que deseja excluir a proposta para ${proposal.clientData.clientName}? Esta ação não pode ser desfeita.`,
+                async () => {
+                    try {
+                        // Determina a coleção correta (pública ou privada) para exclusão
+                        const isPublicProposal = proposal.status === 'Solicitada pelo Cliente';
+                        const proposalRef = isPublicProposal ?
+                            doc(db, `publicArtifacts/${appId}/proposals`, proposalId) :
+                            doc(dbRef.proposals, proposalId);
+
+                        await deleteDoc(proposalRef);
+
+                        addLogEntry('proposal', {
+                            action: `Proposta para <strong>${proposal.clientData.clientName}</strong> excluída.`
+                        });
+                        toast.show('Proposta excluída com sucesso.');
+                    } catch (error) {
+                        console.error("Erro ao excluir proposta: ", error);
+                        toast.show('Erro ao excluir a proposta.');
+                    }
+                }
+            );
+        }
+
+        function renderSavedProposals(proposalsToRender) {
+            if (!savedProposalsContainer) return;
+
+            const statusColors = {
+                'Criada': 'bg-gray-200 text-gray-800',
+                'Enviada ao Cliente': 'bg-blue-200 text-blue-800',
+                'Em Negociação': 'bg-yellow-200 text-yellow-800',
+                'Aceita': 'bg-green-200 text-green-800',
+                'Recusada': 'bg-red-200 text-red-800',
+                'Solicitada pelo Cliente': 'bg-purple-200 text-purple-800',
+            };
+
+            updateSavedProposalsTab(proposalsToRender);
+            savedProposalsContainer.innerHTML = proposalsToRender.sort((a, b) => new Date(b.clientData.lastSaved) - new Date(a.clientData.lastSaved)).map(p => {
+                const lastSavedDate = p.clientData.lastSaved ? new Date(p.clientData.lastSaved).toLocaleString('pt-BR') : 'N/A';
+                const status = p.status || 'Criada';
+                const statusColor = statusColors[status] || 'bg-gray-200 text-gray-800';
+
+                // Adiciona a propriedade isNew para propostas de clientes que ainda não foram visualizadas
+                if (p.status === 'Solicitada pelo Cliente' && p.viewedByVendor !== true) {
+                    p.isNew = true;
+                }
+
+                const newProposalHighlight = p.isNew ? 'bg-yellow-100 border-yellow-400' : 'bg-gray-50';
+                const newProposalBadge = p.isNew ? '<span class="ml-2 text-xs font-bold text-white bg-red-500 px-2 py-1 rounded-full">NOVA!</span>' : '';
+
+                const acceptanceHighlight = p.status === 'Aceita' && p.acceptanceData ? 'border-2 border-green-500 shadow-lg' : '';
+                const acceptanceInfo = p.status === 'Aceita' && p.acceptanceData ? `<p class="text-xs text-green-700 font-semibold mt-1">Aceita por: ${p.acceptanceData.fullName}</p>` : '';
+
+                const viewAnswersButton = p.status === 'Solicitada pelo Cliente' ?
+                    `<button class="view-answers-btn bg-cyan-100 text-cyan-800 px-3 py-1 rounded" data-id="${p.id}">Ver Respostas</button>` : '';
+
+                return `
+                <div class="p-4 rounded-lg flex justify-between items-center ${newProposalHighlight} ${acceptanceHighlight}">
+                    <div>
+                        <div class="flex items-center gap-3">
+                            <p class="font-bold text-gray-800">${p.clientData.clientName || 'Sem nome'}</p>
+                            <span class="text-xs font-semibold px-2 py-1 rounded-full ${statusColor}">${status}</span>
+                            ${newProposalBadge}
+                        </div>
+                        <p class="text-sm text-gray-600">Salvo em: ${lastSavedDate}</p>
+                        ${acceptanceInfo}
+                    </div>
+                    <div class="flex gap-2">
+                        ${viewAnswersButton}
+                        <button class="details-proposal-btn bg-purple-100 text-purple-800 px-3 py-1 rounded" data-id="${p.id}">Acompanhar</button>
+                        <button class="load-proposal-btn bg-blue-100 text-blue-800 px-3 py-1 rounded" data-id="${p.id}">Carregar</button>
+                        <button class="delete-proposal-btn bg-red-100 text-red-800 px-3 py-1 rounded" data-id="${p.id}">Excluir</button>
+                    </div>
+                </div>`;
+            }).join('') || '<p class="text-center text-gray-500">Nenhuma proposta salva.</p>';
+        }
+
+        async function updatePriceInDB(category, serviceIndex, tierIndex, value) {
+            const newPriceState = JSON.parse(JSON.stringify(priceState));
+            const services = newPriceState[category];
+            if (!Array.isArray(services)) return;
+
+            const service = services[serviceIndex];
+            if (!service) return;
+
+            let oldValue;
+
+            if (tierIndex !== undefined) {
+                oldValue = service.precos[tierIndex].valor;
+                service.precos[tierIndex].valor = value;
+                addLogEntry('price', {
+                    serviceName: service.nome,
+                    tierLabel: TIERS[tierIndex].label,
+                    oldValue,
+                    newValue: value
+                });
+            } else {
+                oldValue = service.preco;
+                service.preco = value;
+                addLogEntry('price', {
+                    serviceName: service.nome,
+                    oldValue,
+                    newValue: value
+                });
+            }
+
+            try {
+                await setDoc(dbRef.config, {
+                    priceState: newPriceState
+                }, {
+                    merge: true
+                });
+            } catch (error) {
+                console.error("Erro ao atualizar preço:", error);
+                toast.show("Falha ao salvar alteração de preço.");
+            }
+        }
+
+        async function updateServiceInDB(serviceData) {
+            const {
+                id,
+                originalCategory,
+                newCategory,
+                name,
+                descricao,
+                pricingType,
+                serviceType,
+                categoryId
+            } = serviceData;
+            const newPriceState = JSON.parse(JSON.stringify(priceState));
+
+            const serviceIndex = newPriceState[originalCategory].findIndex(s => s.id === id);
+            if (serviceIndex === -1) {
+                toast.show("Erro: Serviço original não encontrado.");
+                return;
+            }
+            const [serviceToUpdate] = newPriceState[originalCategory].splice(serviceIndex, 1);
+
+            serviceToUpdate.nome = name;
+            serviceToUpdate.descricao = descricao;
+            serviceToUpdate.categoryId = categoryId;
+
+            if (pricingType === 'faixa') {
+                if (!serviceToUpdate.precos) {
+                    serviceToUpdate.precos = buildTiers(Array(9).fill(0));
+                }
+                delete serviceToUpdate.preco;
+                delete serviceToUpdate.tipo;
+            } else {
+                if (serviceToUpdate.precos) {
+                    serviceToUpdate.preco = 0;
+                }
+                serviceToUpdate.tipo = serviceType;
+                delete serviceToUpdate.precos;
+            }
+
+            newPriceState[newCategory].push(serviceToUpdate);
+
+            try {
+                await setDoc(dbRef.config, {
+                    priceState: newPriceState
+                }, {
+                    merge: true
+                });
+                toast.show('Serviço atualizado com sucesso!');
+            } catch (error) {
+                console.error("Erro ao atualizar serviço:", error);
+                toast.show("Falha ao atualizar o serviço.");
+            } finally {
+                editServiceModal.hide();
+            }
+        }
+
+        async function deleteServiceFromDB(category, serviceId) {
+            const newPriceState = JSON.parse(JSON.stringify(priceState));
+            newPriceState[category] = newPriceState[category].filter(s => s.id !== serviceId);
+
+            try {
+                await setDoc(dbRef.config, {
+                    priceState: newPriceState
+                }, {
+                    merge: true
+                });
+                toast.show('Serviço excluído com sucesso!');
+            } catch (error) {
+                console.error("Erro ao excluir serviço:", error);
+                toast.show("Falha ao excluir o serviço.");
+            }
+        }
+
+        async function saveServiceCategory(categoryData) {
+            const newPriceState = JSON.parse(JSON.stringify(priceState));
+            const { id, name } = categoryData;
+
+            if (!Array.isArray(newPriceState.serviceCategories)) {
+                newPriceState.serviceCategories = [];
+            }
+
+            if (id) { // Edição
+                const index = newPriceState.serviceCategories.findIndex(c => c.id === id);
+                if (index !== -1) {
+                    newPriceState.serviceCategories[index].name = name;
+                }
+            } else { // Adição
+                const newId = name.toLowerCase().replace(/\s+/g, '_') + '_' + Date.now();
+                newPriceState.serviceCategories.push({ id: newId, name: name });
+            }
+
+            try {
+                await setDoc(dbRef.config, { priceState: newPriceState }, { merge: true });
+                toast.show('Categoria salva com sucesso!');
+            } catch (error) {
+                console.error("Erro ao salvar categoria:", error);
+                toast.show("Falha ao salvar a categoria.");
+            } finally {
+                categoryModal.hide();
+            }
+        }
+
+        async function deleteServiceCategory(categoryId) {
+            const newPriceState = JSON.parse(JSON.stringify(priceState));
+
+            // Remove a categoria da lista
+            newPriceState.serviceCategories = newPriceState.serviceCategories.filter(c => c.id !== categoryId);
+
+            // Remove o categoryId dos serviços associados
+            ['porVida', 'anual'].forEach(model => {
+                if(newPriceState[model]) {
+                    newPriceState[model].forEach(service => {
+                        if (service.categoryId === categoryId) {
+                            delete service.categoryId;
+                        }
+                    });
+                }
+            });
+
+            try {
+                await setDoc(dbRef.config, { priceState: newPriceState }, { merge: true });
+                toast.show('Categoria excluída com sucesso!');
+            } catch (error) {
+                console.error("Erro ao excluir categoria:", error);
+                toast.show("Falha ao excluir a categoria.");
+            }
+        }
+
+
+        // LÓGICA DE AUTENTICAÇÃO
+        loginForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+
+            loginMessage.textContent = 'Verificando...';
+            loginMessage.classList.remove('text-red-500');
+            loginMessage.classList.add('text-gray-500');
+
+            signInWithEmailAndPassword(auth, email, password)
+                .then((userCredential) => {
+                    console.log('Login bem-sucedido:', userCredential.user);
+                    loginMessage.textContent = '';
+                })
+                .catch((error) => {
+                    console.error('Erro no login:', error.code, error.message);
+                    let friendlyMessage = 'Email ou senha inválidos.';
+                    if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
+                        friendlyMessage = 'Credenciais não encontradas. Verifique o e-mail e a senha.';
+                    } else if (error.code === 'auth/too-many-requests') {
+                        friendlyMessage = 'Muitas tentativas. Tente novamente mais tarde.';
+                    }
+                    loginMessage.textContent = friendlyMessage;
+                    loginMessage.classList.remove('text-gray-500');
+                    loginMessage.classList.add('text-red-500');
+                });
+        });
+
+
+        forgotPasswordLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            const email = document.getElementById('login-email').value;
+            if (!email) {
+                loginMessage.textContent = 'Por favor, digite seu email para redefinir a senha.';
+                loginMessage.classList.remove('text-gray-500');
+                loginMessage.classList.add('text-red-500');
+                return;
+            }
+
+            sendPasswordResetEmail(auth, email)
+                .then(() => {
+                    loginMessage.textContent = 'Email de redefinição de senha enviado!';
+                    loginMessage.classList.remove('text-red-500');
+                    loginMessage.classList.add('text-green-500');
+                })
+                .catch((error) => {
+                    console.error('Erro ao enviar email de redefinição:', error);
+                    loginMessage.textContent = 'Erro ao enviar email. Verifique o endereço.';
+                    loginMessage.classList.remove('text-gray-500');
+                    loginMessage.classList.add('text-red-500');
+                });
+        });
+
+        btnLogout.addEventListener('click', () => {
+            if (auth.currentUser && !auth.currentUser.isAnonymous) {
+                signOut(auth).catch((error) => console.error('Erro ao sair:', error));
+            } else {
+                loginModal.classList.add('visible');
+            }
+        });
+
+        onAuthStateChanged(auth, async (user) => {
+            const mainTitle = document.querySelector('h1');
+            const mainSubtitle = mainTitle.nextElementSibling;
+            const vendorOnlyTabs = [
+                document.querySelector('.tab-button[data-tab="clients"]'),
+                document.querySelector('.tab-button[data-tab="preview-contract"]'),
+                document.querySelector('.tab-button[data-tab="prices"]'),
+                document.querySelector('.tab-button[data-tab="saved"]'),
+                document.querySelector('.tab-button[data-tab="preview-proposal"]')
+            ];
+            const financialParams = document.getElementById('financial-parameters');
+            const btnSaveProposal = document.getElementById('btn-save-proposal');
+            const btnGenerateProposal = document.getElementById('btn-generate-proposal');
+            const resumoInterno = document.getElementById('resumo-interno');
+            const summaryBox = resumoInterno.parentElement;
+            const addPalestraBtn = document.getElementById('add-palestra');
+            const addOutroBtn = document.getElementById('add-outro');
+            const vendorOnlyTitles = document.querySelectorAll('.vendor-only-title');
+            const servicosAvulsosSection = addPalestraBtn.closest('section');
+            const mainContentCol = document.getElementById('main-content-col');
+
+            // Detach all auth-dependent listeners on any auth state change
+            if (unsubscribeProposals) unsubscribeProposals();
+            if (unsubscribePublicProposals) unsubscribePublicProposals();
+            if (unsubscribeClients) unsubscribeClients();
+            if (unsubscribeLogs) unsubscribeLogs();
+
+            const servicosPorVidaTitle = document.getElementById('servicos-por-vida-title');
+            const servicosAnuaisTitle = document.getElementById('servicos-anuais-title');
+
+            if (user && !user.isAnonymous) {
+                // --- VENDEDOR LOGADO ---
+                if (servicosPorVidaTitle) servicosPorVidaTitle.style.display = '';
+                if (servicosAnuaisTitle) servicosAnuaisTitle.style.display = '';
+
+                try {
+                    console.log("Usuário autenticado. Configurando a visão do vendedor...");
+                    clearForm(true); // Limpa o formulário para evitar dados de sessão de cliente
+                    userId = user.uid;
+                    userEmail = user.email;
+                    userInfoDisplay.textContent = `Usuário: ${userEmail}`;
+
+                    // ATUALIZA AS REFERÊNCIAS GLOBAIS DO BANCO DE DADOS
+                    dbRef.proposals = collection(db, `artifacts/${appId}/users/${user.uid}/proposals`);
+                    dbRef.clients = collection(db, `artifacts/${appId}/users/${user.uid}/clients`);
+                    dbRef.logs = doc(db, `artifacts/${appId}/users/${user.uid}/userLogs/main`);
+                    console.log("Referências do banco de dados para o usuário atualizadas.");
+
+                    // Mostra a UI principal e esconde o modal de login
+                    loginModal.classList.remove('visible');
+                    mainAppContainer.classList.remove('hidden');
+
+                    // Configura a UI para a visão do vendedor
+                    if (mainContentCol) mainContentCol.classList.replace('lg:col-span-3', 'lg:col-span-2');
+                    btnLogout.textContent = 'Sair';
+                    btnLogout.className = 'w-full md:w-auto bg-red-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-red-600 transition-all';
+                    vendorOnlyTabs.forEach(tab => tab && (tab.style.display = ''));
+                    if (financialParams) financialParams.style.display = '';
+                    if (summaryBox) summaryBox.style.display = '';
+                    if (addPalestraBtn) addPalestraBtn.style.display = '';
+                    if (addOutroBtn) addOutroBtn.style.display = '';
+                    if (servicosAvulsosSection) servicosAvulsosSection.style.display = '';
+                    if (mainTitle) mainTitle.textContent = 'Sistema de Gerenciamento de Propostas';
+                    if (mainSubtitle) mainSubtitle.textContent = 'Navegue entre as abas para criar, visualizar e gerenciar suas propostas.';
+                    document.getElementById('generator-add-client-btn').style.display = '';
+                    btnSaveProposal.style.display = '';
+                    vendorOnlyTitles.forEach(title => title.style.display = 'block');
+                    btnGenerateProposal.style.display = 'none';
+                    document.getElementById('btn-new-proposal').style.display = '';
+
+                    // Mostra a seleção de serviços e esconde o questionário para o vendedor
+                    questionnaireContainer.style.display = 'none';
+                    serviceSelectionContainer.style.display = 'block';
+
+                    const clientFields = [formElements.clientCnpj, formElements.clientAddress, formElements.clientContactPerson, formElements.clientContactRole, formElements.clientEmail, formElements.clientPhone];
+                    clientFields.forEach(field => {
+                        if (field) {
+                            field.readOnly = true;
+                            field.classList.add('bg-gray-100');
+                        }
+                    });
+                    clientNameInput.addEventListener('input', handleClientSearch);
+                    console.log("UI do vendedor configurada.");
+
+                    // Anexa os listeners de dados com tratamento de erros
+                    console.log("Anexando listeners de dados...");
+                    unsubscribeProposals = onSnapshot(query(dbRef.proposals), (snap) => {
+                        vendorProposals = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                        savedProposals = [...vendorProposals, ...publicProposals];
+                        renderSavedProposals(savedProposals);
+                    }, (error) => console.error("Erro crítico ao carregar propostas do vendedor:", error));
+
+                    const publicProposalsRef = collection(db, `publicArtifacts/${appId}/proposals`);
+                    unsubscribePublicProposals = onSnapshot(query(publicProposalsRef), (snap) => {
+                        publicProposals = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                        savedProposals = [...vendorProposals, ...publicProposals];
+                        renderSavedProposals(savedProposals);
+                    }, (error) => console.error("Erro crítico ao carregar propostas públicas:", error));
+
+                    unsubscribeClients = onSnapshot(query(dbRef.clients), (querySnapshot) => {
+                        clients = [];
+                        querySnapshot.forEach((doc) => clients.push({ id: doc.id, ...doc.data() }));
+                        renderClientsList();
+                    }, (error) => console.error("Erro crítico ao carregar clientes:", error));
+
+                    const priceLogQuery = query(collection(dbRef.logs, 'priceLog'));
+                    const proposalLogQuery = query(collection(dbRef.logs, 'proposalLog'));
+                    onSnapshot(priceLogQuery, (snapshot) => {
+                        priceLogEntries = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                        priceLogEntries.sort((a, b) => b.timestamp - a.timestamp);
+                        renderPriceLog();
+                    }, (error) => console.error("Erro ao carregar log de preços:", error));
+                    onSnapshot(proposalLogQuery, (snapshot) => {
+                        proposalLogEntries = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                        proposalLogEntries.sort((a, b) => b.timestamp - a.timestamp);
+                        renderProposalLog();
+                    }, (error) => console.error("Erro ao carregar log de propostas:", error));
+
+                    console.log("Listeners de dados anexados. Login completo.");
+
+                } catch (error) {
+                    console.error("Um erro fatal ocorreu durante o processo de login do vendedor:", error);
+                    alert("Ocorreu um erro ao carregar os dados do vendedor. Por favor, recarregue a página e tente novamente.");
+                }
+
+            } else {
+                // --- CLIENTE (NÃO LOGADO) ---
+                if (servicosPorVidaTitle) servicosPorVidaTitle.style.display = 'none';
+                if (servicosAnuaisTitle) servicosAnuaisTitle.style.display = 'none';
+
+                userId = null;
+                userEmail = null;
+                userInfoDisplay.textContent = '';
+                mainAppContainer.classList.remove('hidden');
+                loginModal.classList.remove('visible');
+
+
+                btnLogout.textContent = 'Login para Vendedores';
+                btnLogout.className = 'w-full md:w-auto bg-cyan-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-cyan-700 transition-all';
+
+                if (mainContentCol) mainContentCol.classList.replace('lg:col-span-2', 'lg:col-span-3');
+                vendorOnlyTabs.forEach(tab => tab && (tab.style.display = 'none'));
+                if (financialParams) financialParams.style.display = 'none';
+                if (summaryBox) summaryBox.style.display = 'none';
+                if (servicosAvulsosSection) servicosAvulsosSection.style.display = 'none';
+                if (mainTitle) mainTitle.textContent = 'Solicite seu orçamento!';
+                if (mainSubtitle) mainSubtitle.textContent = 'Preencha os dados e selecione os serviços desejados para receber uma proposta personalizada.';
+                document.getElementById('generator-add-client-btn').style.display = 'none';
+                btnSaveProposal.style.display = 'none';
+                vendorOnlyTitles.forEach(title => title.style.display = 'none');
+                btnGenerateProposal.textContent = 'Pedir Orçamento';
+                btnGenerateProposal.className = 'w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 transition-all shadow-md';
+                btnGenerateProposal.style.display = '';
+                questionnaireContainer.style.display = 'block';
+                serviceSelectionContainer.style.display = 'block';
+                document.getElementById('btn-new-proposal').style.display = 'none';
+
+                const clientFields = [formElements.clientName, formElements.clientCnpj, formElements.clientAddress, formElements.clientContactPerson, formElements.clientContactRole, formElements.clientEmail, formElements.clientPhone];
+                clientFields.forEach(field => {
+                    if (field) {
+                        field.readOnly = false;
+                        field.classList.remove('bg-gray-100');
+                    }
+                });
+                clientNameInput.removeEventListener('input', handleClientSearch);
+
+                const activeTab = document.querySelector('.tab-button.active');
+                if (activeTab && activeTab.style.display === 'none') {
+                    document.querySelector('.tab-button[data-tab="generator"]').click();
+                }
+            }
+        });
+
+        function setupListeners() {
+            console.log("Iniciando aplicação e carregando configurações...");
+            let configLoaded = false;
+
+            // Fallback Timer: If Firebase takes too long, load with default data.
+            const fallbackTimeout = setTimeout(() => {
+                if (configLoaded) return;
+
+                configLoaded = true;
+                console.warn("Timeout de 10s atingido. Conexão com Firebase lenta ou bloqueada. Carregando com dados padrão.");
+
+                priceState = initialPriceData;
+                serviceCategories = initialPriceData.serviceCategories || [];
+
+                popularServicos();
+                renderPriceTable();
+                renderServiceCategories();
+                clearForm(true);
+
+                loaderElem.style.display = 'none';
+                console.log("Aplicação iniciada com dados locais.");
+                exposeForTesting();
+            }, 10000); // 10 seconds timeout
+
+            if (!configListenerAttached) {
+                onSnapshot(dbRef.config, (docSnap) => {
+            // A remoção de 'if (configLoaded) return;' permite atualizações em tempo real
+            if (!configLoaded) {
+                configLoaded = true;
+                clearTimeout(fallbackTimeout);
+                console.log("Configurações do Firebase recebidas pela primeira vez.");
+            }
+
+                    const data = docSnap.exists() ? docSnap.data().priceState : initialPriceData;
+                    priceState = data;
+                    serviceCategories = data.serviceCategories || [];
+
+                    popularServicos();
+                    renderPriceTable();
+                    renderServiceCategories();
+
+            // Recalcula totais se um vendedor estiver logado, resolvendo a race condition
+            if (auth.currentUser && !auth.currentUser.isAnonymous) {
+                runAllUpdates();
+            }
+
+            // Garante que o loader seja removido apenas uma vez
+            if (loaderElem.style.display !== 'none') {
+                loginModal.classList.remove('visible');
+                mainAppContainer.classList.remove('hidden');
+                loaderElem.style.display = 'none';
+                console.log("Aplicação iniciada com dados do Firebase.");
+                exposeForTesting();
+            }
+                }, (error) => {
+                    if (configLoaded) return;
+
+                    configLoaded = true;
+                    clearTimeout(fallbackTimeout);
+                    console.error("Erro ao carregar configurações do Firebase:", error);
+                    console.warn("Carregando com dados padrão devido a erro.");
+
+                    priceState = initialPriceData;
+                    serviceCategories = initialPriceData.serviceCategories || [];
+
+                    popularServicos();
+                    renderPriceTable();
+                    renderServiceCategories();
+                    clearForm(true);
+
+                    loaderElem.style.display = 'none';
+                    console.log("Aplicação iniciada com dados locais após erro.");
+                    exposeForTesting();
+                });
+                configListenerAttached = true;
+            }
+        }
+
+        // --- INICIALIZAÇÃO DA APLICAÇÃO ---
+        setupListeners();
+
+        // Expõe funções e estado para fins de teste
+        window.priceState = priceState;
+        window.renderSavedProposals = renderSavedProposals;
+
+        // --- CÓDIGO RESTANTE (FUNÇÕES DO APP) --- 
+
+        function createServiceTableRow(service, category) {
+            const isClientView = !auth.currentUser || auth.currentUser.isAnonymous;
+            const isObrigatorio = service.obrigatorio;
+
+            if (isClientView && service.oculto) {
+                return null;
+            }
+
+            const row = document.createElement('tr');
+            row.className = 'service-row border-b' + (isObrigatorio ? ' selected' : '');
+            row.dataset.id = service.id;
+            row.dataset.category = category;
+
+            let extraInputs = '';
+            if (service.tipo === 'quantidade') {
+                extraInputs += `<input type="number" value="1" min="1" class="quantity-input" data-label="${service.obs || ''}">`;
+            }
+            if (service.id === 'atend_in_company') {
+                extraInputs += `<select class="frequency-selector"><option value="anual" selected>Anual</option><option value="mensal">Mensal</option><option value="semanal">Semanal</option></select>`;
+            }
+
+            const valorCell = isClientView ?
+                `<td class="p-2 align-middle text-sm text-gray-600">${service.descricao || ''}</td>` :
+                `<td class="p-2 align-middle"><input type="text" class="price-input table-price-input" style="width: 110px; text-align: right;"></td>`;
+
+            row.innerHTML = `
+                <td class="p-2 text-center align-middle">
+                    <input type="checkbox" class="service-checkbox h-5 w-5 text-cyan-600 border-gray-300 rounded focus:ring-cyan-500" ${isObrigatorio ? 'checked' : ''} ${isObrigatorio && isClientView ? 'disabled' : ''}>
+                </td>
+                <td class="p-2 align-middle font-semibold text-gray-800">${service.nome}</td>
+                <td class="p-2 align-middle">${extraInputs}</td>
+                ${valorCell}
+            `;
+
+            const checkbox = row.querySelector('.service-checkbox');
+            const toggleSelection = () => {
+                row.classList.toggle('selected', checkbox.checked);
+                runAllUpdates();
+            };
+
+            checkbox.addEventListener('change', toggleSelection);
+
+            row.querySelectorAll('.quantity-input, .frequency-selector').forEach(input => {
+                input.addEventListener('change', runAllUpdates);
+                input.addEventListener('click', (e) => e.stopPropagation());
+            });
+
+            return row;
+        }
+
+        function createServiceCard(service, category) {
+            const isClientView = !auth.currentUser || auth.currentUser.isAnonymous;
+            const isObrigatorio = service.obrigatorio;
+
+            if (isClientView && service.oculto) {
+                return null;
+            }
+
+            const card = document.createElement('div');
+            card.className = 'service-card p-4 border-2 border-gray-200 rounded-lg flex flex-col justify-between h-full';
+            if (!isObrigatorio) {
+                 card.classList.add('cursor-pointer');
+            }
+            card.dataset.id = service.id;
+            card.dataset.category = category;
+
+            let extraInputs = '';
+            if (service.tipo === 'quantidade') {
+                extraInputs += `<input type="number" value="1" min="1" class="quantity-input" data-label="${service.obs || ''}">`;
+            }
+            if (service.id === 'atend_in_company') {
+                extraInputs += `<select class="frequency-selector"><option value="anual" selected>Anual</option><option value="mensal">Mensal</option><option value="semanal">Semanal</option></select>`;
+            }
+
+            const bottomSectionHTML = `
+                <div class="text-right font-semibold text-cyan-700 mt-2 flex items-center justify-end gap-2 flex-wrap">
+                    ${extraInputs}
+                    <input type="text" class="price-input" readonly>
+                    <span class="total-price-display text-gray-800 font-bold w-full text-right"></span>
+                </div>`;
+
+            card.innerHTML = `
+                <div>
+                    <div class="flex justify-between items-start">
+                        <div><h4 class="font-bold text-gray-800">${service.nome}</h4></div>
+                        <span class="text-2xl text-gray-300">&#9675;</span>
+                    </div>
+                </div>
+                ${bottomSectionHTML}`;
+
+            const priceInput = card.querySelector('.price-input');
+            if(priceInput) {
+                priceInput.addEventListener('change', runAllUpdates);
+            }
+
+            const toggleSelection = () => {
+                card.classList.toggle('selected');
+                if (priceInput) priceInput.readOnly = !card.classList.contains('selected');
+                const circle = card.querySelector('.text-2xl');
+                circle.innerHTML = card.classList.contains('selected') ? '&#9711;' : '&#9675;';
+                circle.classList.toggle('text-gray-300');
+                circle.classList.toggle('text-cyan-600');
+                runAllUpdates();
+            };
+
+            card.addEventListener('click', (e) => {
+                if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+                toggleSelection();
+            });
+
+            card.querySelectorAll('.quantity-input, .frequency-selector').forEach(input => {
+                input.addEventListener('change', runAllUpdates);
+                input.addEventListener('click', (e) => e.stopPropagation());
+            });
+            return card;
+        }
+
+        function createDynamicRow(containerId, placeholder, onchange, suggestedPrice = 0, theme = '') {
+            const container = document.getElementById(containerId);
+            const row = document.createElement('div');
+            row.className = 'dynamic-row flex items-center gap-3 bg-gray-50 p-3 rounded-lg';
+            row.innerHTML = `<input type="text" placeholder="${placeholder}" value="${theme}" class="theme-input p-2 border rounded-md flex-grow"><input type="text" value="${suggestedPrice.toFixed(2).replace('.',',')}" class="price-input"><button class="remove-row text-red-500 hover:text-red-700 font-bold text-xl">&times;</button>`;
+            container.appendChild(row);
+            row.querySelector('.price-input').addEventListener('change', onchange);
+            row.querySelector('.theme-input').addEventListener('input', onchange);
+            row.querySelector('.remove-row').addEventListener('click', () => {
+                row.remove();
+                onchange();
+            });
+            onchange();
+        }
+
+        function popularServicos() {
+            if (!priceState || !priceState.porVida) return;
+            const containers = {
+                porVida: document.getElementById('servicos-por-vida'),
+                anual: document.getElementById('servicos-anuais')
+            };
+            Object.values(containers).forEach(c => c.innerHTML = '');
+            const isClientView = !auth.currentUser || auth.currentUser.isAnonymous;
+
+            const groupServicesByCategory = (services) => {
+                const grouped = {};
+                services.forEach(service => {
+                    const categoryId = service.categoryId || 'sem_categoria';
+                    if (!grouped[categoryId]) {
+                        grouped[categoryId] = [];
+                    }
+                    grouped[categoryId].push(service);
+                });
+                return grouped;
+            };
+
+            const renderTableForModel = (container, pricingModel) => {
+                const services = priceState[pricingModel] || [];
+                const groupedServices = groupServicesByCategory(services);
+                const lastColumnHeader = isClientView ? 'Descrição' : 'Valor';
+
+                serviceCategories.forEach(category => {
+                    if (groupedServices[category.id]) {
+                        const servicesForCategory = groupedServices[category.id];
+                        const visibleServicesRows = servicesForCategory
+                            .map(service => createServiceTableRow(service, pricingModel))
+                            .filter(Boolean);
+
+                        if (visibleServicesRows.length > 0) {
+                            const categoryWrapper = document.createElement('div');
+                            categoryWrapper.className = 'mb-6';
+                            categoryWrapper.innerHTML = `
+                                <h4 class="font-semibold text-md mb-2 text-cyan-800 border-b pb-1">${category.name}</h4>
+                                <div class="overflow-x-auto bg-white rounded-lg border">
+                                    <table class="w-full text-sm">
+                                        <thead class="bg-gray-50">
+                                            <tr>
+                                                <th class="p-2 w-16 text-center font-semibold text-gray-600">Selecionar</th>
+                                                <th class="p-2 text-left font-semibold text-gray-600">Serviço</th>
+                                                <th class="p-2 text-left w-48 font-semibold text-gray-600">Quantidade/Frequência</th>
+                                                <th class="p-2 text-left font-semibold text-gray-600">${lastColumnHeader}</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody></tbody>
+                                    </table>
+                                </div>
+                            `;
+                            const tbody = categoryWrapper.querySelector('tbody');
+                            visibleServicesRows.forEach(row => tbody.appendChild(row));
+                            container.appendChild(categoryWrapper);
+                        }
+                    }
+                });
+            };
+
+            containers.porVida.className = 'space-y-4';
+            containers.anual.className = 'space-y-4';
+            renderTableForModel(containers.porVida, 'porVida');
+            renderTableForModel(containers.anual, 'anual');
+            runAllUpdates();
+        }
+
+        function updateSuggestedValues() {
+            if (!priceState.porVida) return;
+            const vidas = parseInt(formElements.numVidas.value) || 0;
+            const isClientView = !auth.currentUser || auth.currentUser.isAnonymous;
+
+            document.querySelectorAll('.service-row').forEach(el => {
+                const { id, category } = el.dataset;
+                const services = priceState[category];
+                if (!services || !Array.isArray(services)) return;
+
+                const service = services.find(s => s.id === id);
+                if (!service) return;
+
+                if (!isClientView) {
+                    const priceInput = el.querySelector('.price-input');
+                    if (priceInput) {
+                        let pricePerUnit = service.preco ?? getPriceFromState(vidas, service.precos);
+                        if (service.isDynamic) {
+                            const pgrPrice = getPriceFromState(vidas, priceState.anual.find(s => s.id === 'pgr').precos);
+                            const pcmsoPrice = getPriceFromState(vidas, priceState.anual.find(s => s.id === 'pcmso').precos);
+                            pricePerUnit = (pgrPrice + pcmsoPrice) * service.multiplier;
+                        }
+                        priceInput.value = pricePerUnit.toFixed(2).replace('.', ',');
+                    }
+                }
+
+                if (service.sugestao_fator) {
+                    const qtyInput = el.querySelector('.quantity-input');
+                    if (qtyInput) {
+                        let suggestedQty = vidas * service.sugestao_fator;
+                        if (service.sugestao_divisor) {
+                            suggestedQty = Math.ceil(suggestedQty / service.sugestao_divisor);
+                        }
+                        qtyInput.value = Math.max(1, Math.ceil(suggestedQty));
+                    }
+                }
+            });
+        }
+
+        function calculateAllTotals() {
+            const vidas = parseInt(formElements.numVidas.value) || 0;
+            let custoMensal = 0;
+            let detailedCosts = [];
+            const isClientView = !auth.currentUser || auth.currentUser.isAnonymous;
+
+            document.querySelectorAll('.service-row.selected').forEach(el => {
+                const { id, category } = el.dataset;
+                const services = priceState[category];
+                if (!services || !Array.isArray(services)) return;
+
+                const service = services.find(s => s.id === id);
+                if (!service) return;
+
+                let price;
+                if (isClientView) {
+                    price = service.preco ?? getPriceFromState(vidas, service.precos);
+                     if (service.isDynamic) {
+                        const pgrPrice = getPriceFromState(vidas, priceState.anual.find(s => s.id === 'pgr').precos);
+                        const pcmsoPrice = getPriceFromState(vidas, priceState.anual.find(s => s.id === 'pcmso').precos);
+                        price = (pgrPrice + pcmsoPrice) * service.multiplier;
+                    }
+                } else {
+                    const priceInput = el.querySelector('.price-input');
+                    price = priceInput ? parseCurrency(priceInput.value) : 0;
+                }
+
+                let monthlyContribution = 0;
+
+                if (category === 'porVida') {
+                    const total = price * vidas;
+                    monthlyContribution = total;
+                } else if (category === 'anual') {
+                    const quantity = parseInt(el.querySelector('.quantity-input')?.value || 1);
+                    let totalAnual = price * (service.tipo === 'fixo' ? 1 : quantity);
+                    if (id === 'atend_in_company') {
+                        const frequency = el.querySelector('.frequency-selector').value;
+                        if (frequency === 'mensal') totalAnual = price * quantity * 12;
+                        else if (frequency === 'semanal') totalAnual = price * quantity * 52;
+                    }
+                    monthlyContribution = totalAnual / 12;
+                }
+                custoMensal += monthlyContribution;
+                detailedCosts.push({ name: service.nome, cost: monthlyContribution, id: service.id });
+            });
+
+            if (isClientView) {
+                ['porVida', 'anual'].forEach(category => {
+                    const services = priceState[category] || [];
+                    services.forEach(service => {
+                        if (service.obrigatorio && service.oculto) {
+                            let price = service.preco ?? getPriceFromState(vidas, service.precos);
+                            let monthlyContribution = 0;
+                            if (category === 'porVida') {
+                                monthlyContribution = price * vidas;
+                            } else {
+                                monthlyContribution = price / 12;
+                            }
+                            custoMensal += monthlyContribution;
+                            detailedCosts.push({ name: service.nome, cost: monthlyContribution, id: service.id });
+                        }
+                    });
+                });
+            }
+
+            document.querySelectorAll('#palestras-container .dynamic-row, #outros-container .dynamic-row').forEach(row => {
+                const avulsoCost = parseCurrency(row.querySelector('.price-input').value);
+                custoMensal += avulsoCost / 12;
+                detailedCosts.push({
+                    name: row.querySelector('.theme-input').value || 'Serviço Adicional',
+                    cost: avulsoCost / 12,
+                    id: 'outro'
+                });
+            });
+            if (!isClientView) {
+                resumo.detalhado.innerHTML = detailedCosts.map(item => `<div class="flex justify-between"><span>${item.name}</span><span>${formatCurrency(item.cost)}</span></div>`).join('');
+            } else {
+                resumo.detalhado.innerHTML = '';
+            }
+
+            const taxRate = parseCurrency(formElements.tax.value) / 100;
+            const profitRate = parseCurrency(formElements.profit.value) / 100;
+            const divisor = 1 - (taxRate + profitRate);
+            let valorFinalMensal = 0, impostoValor = 0, lucroValor = 0;
+
+            if (divisor > 0) {
+                valorFinalMensal = custoMensal / divisor;
+                impostoValor = valorFinalMensal * taxRate;
+                lucroValor = valorFinalMensal * profitRate;
+            }
+            resumo.custo.textContent = formatCurrency(custoMensal);
+            resumo.imposto.textContent = formatCurrency(impostoValor);
+            resumo.lucro.textContent = formatCurrency(lucroValor);
+            resumo.totalMensal.textContent = formatCurrency(valorFinalMensal);
+            const valorFinalAnual = valorFinalMensal * 12;
+            const valorMensalPorVida = vidas > 0 ? valorFinalMensal / vidas : 0;
+            resumo.totalAnual.textContent = formatCurrency(valorFinalAnual);
+            resumo.mensalPorVida.textContent = formatCurrency(valorMensalPorVida);
+            return { valorFinalMensal, valorFinalAnual, valorMensalPorVida };
+        }
+
+        function generateProposalPreview(data) {
+            const {
+                client,
+                totalMensal,
+                totalAnual,
+                mensalPorVida,
+                today,
+                selectedServices
+            } = data;
+            const hiddenItems = ['custo_adm', 'uso_soc', 'art_pgr', 'art_ltcat'];
+            const allServices = [...selectedServices.porVida, ...selectedServices.anual, ...selectedServices.avulsos].filter(s => !hiddenItems.includes(s.id));
+            const servicesTable = allServices.map(s => {
+                let serviceData;
+                if (s.id === 'palestra') {
+                    serviceData = priceState.palestra;
+                } else if (s.id === 'outro') {
+                    serviceData = {
+                        descricao: 'Serviço customizado conforme acordado.'
+                    };
+                } else {
+                    const services = priceState[s.category];
+                    if (Array.isArray(services)) {
+                        serviceData = services.find(db_s => db_s.id === s.id);
+                    }
+                }
+
+                let serviceName = s.theme || s.nome;
+                if (s.tipo === 'quantidade' && s.quantity) {
+                    const unitLabel = s.obs || (s.quantity > 1 ? 'unidades' : 'unidade');
+                    serviceName += ` (${s.quantity} ${unitLabel})`;
+                }
+
+                return `<tr><td class="p-2 border font-semibold">${serviceName}</td><td class="p-2 border">${serviceData?.descricao || ''}</td></tr>`;
+            }).join('');
+
+            return `<div class="prose max-w-none"> 
+                <div class="text-center mb-8"><img src="https://static.wixstatic.com/media/d524d5_c6d471c32a0f41ea9f2080d05477a60d~mv2.png" alt="Logo Medmais" style="width: 150px; margin: 0 auto;"></div>
+                <h2 class="text-center font-bold text-xl">PROPOSTA COMERCIAL MEDMAIS</h2> 
+                <p><strong>Elaborada em:</strong> ${today}</p> 
+                <p><strong>Para:</strong> ${client.clientContactPerson || 'Não informado'}</p> 
+                <p><strong>Empresa:</strong> ${client.clientName || 'Não informada'}</p> 
+                <hr> 
+                <h3 class="font-semibold mt-4">1. Introdução</h3> 
+                <p>Conforme solicitação de Serviços de Medicina e Segurança do Trabalho, baseados em lei do Ministério do Trabalho e Emprego, representados pela NR 7, NR 4, NR 9 e eSocial, seguem abaixo os serviços e programas ofertados:</p> 
+                <table class="w-full text-sm border-collapse"><thead><tr class="bg-gray-100"><th class="p-2 border text-left">Programa / Serviço</th><th class="p-2 border text-left">Descrição</th></tr></thead><tbody>${servicesTable}</tbody></table> 
+                
+                <h3 class="font-semibold mt-6">2. Diferenciais Medmais</h3> 
+                <ul class="list-disc list-inside text-sm"> 
+                    <li>Visão interdisciplinar no SESMT (Serviço Especializado em Engenharia de Segurança e em Medicina do Trabalho);</li> 
+                    <li>Avaliação de funcionários Portadores Com Deficiência (PCD) para homologação e adequação funcional, quando adequado emissão de laudo PCD;</li> 
+                    <li>Adequação de EPIs de forma individualizada, quando necessário para suprir necessidades especiais;</li> 
+                    <li>Consultoria em Medicina do Trabalho sobre o processo de prevenção ocupacional;</li> 
+                    <li>Gestão de integração e perfil admissional por função;</li> 
+                    <li>Orientação sobre Nexo Técnico Epidemiológico Previdenciário – NTEP e FAP – Fator Acidentário Previdenciário.</li> 
+                </ul> 
+
+                <h3 class="font-semibold mt-6">3. Sistema Informatizado de Gestão</h3> 
+                <ul class="list-disc list-inside text-sm"> 
+                    <li>Melhor controle de prazos para os programas obrigatórios;</li> 
+                    <li>Relatórios de absenteísmo e perfil de adoecimento;</li> 
+                    <li>Facilidade na emissão de documentação legal e gestão de dados do SESMT.</li> 
+                </ul> 
+
+                <h3 class="font-semibold mt-6">4. Investimento</h3> 
+                <div class="bg-blue-50 p-4 rounded-lg"> 
+                    <p>Valor Mensal para ${client.numVidas} funcionário(s): <strong class="text-xl">${formatCurrency(totalMensal)}</strong></p> 
+                    <p class="text-sm mt-1">Valor por Vida: <strong class="text-md">${formatCurrency(mensalPorVida)}</strong></p> 
+                    <p class="text-sm mt-1">Valor Anual Total: <strong class="text-md">${formatCurrency(totalAnual)}</strong></p> 
+                </div> 
+                
+                <h3 class="font-semibold mt-6">5. Observações</h3> 
+                <ul class="list-disc list-inside text-sm"> 
+                    <li>Tempo de permanência mínima no contrato de 12 meses.</li> 
+                    <li>Forma de pagamento por boleto bancário com emissão de nota fiscal de serviços.</li> 
+                </ul> 
+                <div class="mt-8 text-center"><p><strong>Comercial MEDMAIS</strong></p><p>Sra. Carla France - Administradora</p><p>(85) 3081-5001 / 98509-1101</p></div> 
+            </div>`;
+        }
+
+        function generateContractPreview(data) {
+            const {
+                client,
+                totalMensal,
+                today,
+                selectedServices
+            } = data;
+            const servicosMensais = [...selectedServices.porVida, ...selectedServices.anual];
+            const servicesTable = servicosMensais.map(s => {
+                const services = priceState[s.category];
+                let serviceData;
+                if (Array.isArray(services)) {
+                    serviceData = services.find(db_s => db_s.id === s.id);
+                }
+                return `<tr><td class="p-2 border">${s.nome}</td><td class="p-2 border">${serviceData?.descricao || ''}</td></tr>`;
+            }).join('');
+
+            return `<div class="prose prose-sm max-w-none"> 
+                <div class="text-center mb-8"><img src="https://static.wixstatic.com/media/d524d5_c6d471c32a0f41ea9f2080d05477a60d~mv2.png" alt="Logo Medmais" style="width: 150px; margin: 0 auto;"></div>
+                <h3 class="text-center font-bold">CONTRATO DE PRESTAÇÃO DE SERVIÇO DE SST</h3> 
+                <p><strong>CONTRATANTE:</strong> ${client.clientName}, CNPJ nº ${client.clientCnpj}, com sede em ${client.clientAddress}, representada por ${client.clientContactPerson}.</p> 
+                <p><strong>CONTRATADA:</strong> MEDMAIS SOLUÇÕES MÉDICAS S/S LTDA., CNPJ nº 12.518.597/0001-40.</p> 
+                <h4>CLÁUSULA PRIMEIRA - DO OBJETO</h4> 
+                <p>1.1 O objeto é a prestação dos seguintes serviços:</p> 
+                <table class="w-full text-xs border-collapse"><thead><tr class="bg-gray-100"><th class="p-2 border text-left">Serviço</th><th class="p-2 border text-left">Descrição</th></tr></thead><tbody>${servicesTable}</tbody></table> 
+                <h4>CLÁUSULA SÉTIMA – DO PREÇO</h4> 
+                <p>7.1 A CONTRATANTE pagará à CONTRATADA o valor mensal de <strong>${formatCurrency(totalMensal)}</strong>, referente aos serviços para ${client.numVidas} vidas.</p> 
+                <p class="text-center mt-8">Fortaleza, ${today}.</p> 
+            </div>`;
+        }
+
+        function runAllUpdates() {
+            if (!priceState.porVida) return;
+            const totals = calculateAllTotals();
+            const data = getFormData();
+            const detailedCosts = Array.from(resumo.detalhado.children).map(div => ({
+                name: div.children[0].textContent,
+                cost: parseCurrency(div.children[1].textContent)
+            }));
+            const previewData = {
+                client: data.clientData,
+                totalMensal: totals.valorFinalMensal,
+                totalAnual: totals.valorFinalAnual,
+                mensalPorVida: totals.valorMensalPorVida,
+                today: new Date().toLocaleDateString('pt-BR', {
+                    day: '2-digit',
+                    month: 'long',
+                    year: 'numeric'
+                }),
+                selectedServices: data.services,
+                detailedCosts
+            };
+            proposalPreviewContainer.innerHTML = generateProposalPreview(previewData);
+            contractPreviewContainer.innerHTML = generateContractPreview(previewData);
+        }
+
+        function getFormData() {
+            const clientData = {};
+            for (const key in formElements) {
+                clientData[key] = formElements[key].value;
+            }
+            const services = {
+                porVida: [],
+                anual: [],
+                avulsos: []
+            };
+            const isClientView = !auth.currentUser || auth.currentUser.isAnonymous;
+            const vidas = parseInt(formElements.numVidas.value) || 0;
+
+            document.querySelectorAll('.service-row.selected').forEach(el => {
+                const { id, category } = el.dataset;
+                const serviceList = priceState[category];
+                if (!serviceList || !Array.isArray(serviceList)) return;
+
+                const service = serviceList.find(s => s.id === id);
+                if (service) {
+                    let price;
+                    if (isClientView) {
+                        price = service.preco ?? getPriceFromState(vidas, service.precos);
+                        if (service.isDynamic) {
+                            const pgrPrice = getPriceFromState(vidas, priceState.anual.find(s => s.id === 'pgr').precos);
+                            const pcmsoPrice = getPriceFromState(vidas, priceState.anual.find(s => s.id === 'pcmso').precos);
+                            price = (pgrPrice + pcmsoPrice) * service.multiplier;
+                        }
+                    } else {
+                        price = parseCurrency(el.querySelector('.price-input').value);
+                    }
+
+                    const quantity = parseInt(el.querySelector('.quantity-input')?.value || 1);
+                    const frequency = el.querySelector('.frequency-selector')?.value || 'anual';
+                    services[category].push({ ...service, category, price, quantity, frequency });
+                }
+            });
+
+            services.avulsos.push(...Array.from(document.querySelectorAll('#palestras-container .dynamic-row')).map(row => ({
+                id: 'palestra',
+                category: 'avulsos',
+                nome: 'Palestra Exclusiva',
+                theme: row.querySelector('.theme-input').value,
+                price: parseCurrency(row.querySelector('.price-input').value)
+            })));
+            services.avulsos.push(...Array.from(document.querySelectorAll('#outros-container .dynamic-row')).map(row => ({
+                id: 'outro',
+                category: 'avulsos',
+                nome: row.querySelector('.theme-input').value || 'Outro Serviço',
+                price: parseCurrency(row.querySelector('.price-input').value)
+            })));
+
+            return { clientData, services };
+        }
+
+        function clearForm(resetDefaults = true) {
+            const isClientView = !auth.currentUser || auth.currentUser.isAnonymous;
+            const fieldsToClear = ['proposalId', 'generatorClientId', 'clientName', 'clientCnpj', 'clientAddress', 'clientContactPerson', 'clientContactRole', 'clientEmail', 'clientPhone'];
+            fieldsToClear.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.value = '';
+            });
+
+            formElements.tax.value = 12;
+            formElements.profit.value = 30;
+            formElements.numVidas.value = 10;
+            
+            document.querySelectorAll('.service-checkbox:checked').forEach(checkbox => {
+                if (!checkbox.disabled) {
+                    checkbox.checked = false;
+                    checkbox.dispatchEvent(new Event('change'));
+                }
+            });
+
+            document.querySelectorAll('#palestras-container, #outros-container').forEach(c => c.innerHTML = '');
+
+            if (resetDefaults && !isClientView) { // Defaults only for vendor view
+                const defaultServices = ['pcmso', 'pgr', 'ltcat', 'custo_adm', 'uso_soc', 'gestao_esocial', 'palestras_anuais', 'visita_tecnica', 'emissao_aso'];
+                defaultServices.forEach(id => {
+                    const row = document.querySelector(`.service-row[data-id="${id}"]`);
+                    if (row) {
+                        const checkbox = row.querySelector('.service-checkbox');
+                        if (checkbox && !checkbox.checked) {
+                            checkbox.checked = true;
+                            // Dispara o evento de 'change' para garantir que o estado 'selected' seja aplicado e os totais recalculados.
+                            checkbox.dispatchEvent(new Event('change'));
+                        }
+                    }
+                });
+            }
+
+
+            updateSuggestedValues();
+            runAllUpdates();
+        }
+
+        function renderPriceTable() {
+            if (!priceState.porVida) return;
+            const container = document.getElementById('price-table-container');
+            container.innerHTML = '';
+            Object.keys(priceState).filter(c => c !== 'palestra' && c !== 'serviceCategories').forEach(category => {
+                const categoryTitle = category.charAt(0).toUpperCase() + category.slice(1);
+                let tableHtml = `<h3 class="text-lg font-semibold text-cyan-900">${categoryTitle.replace(/([A-Z])/g, ' $1').trim()}</h3><div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr class="bg-gray-100"><th class="p-2 text-left">Serviço</th>`;
+                TIERS.forEach(tier => tableHtml += `<th class="p-2">${tier.label}</th>`);
+                tableHtml += `<th class="p-2 text-center">Obrigatório</th><th class="p-2 text-center">Oculto</th><th class="p-2 text-center">Ações</th></tr></thead><tbody>`;
+
+                const services = priceState[category];
+                if (Array.isArray(services)) {
+                    services.forEach((service, serviceIndex) => {
+                        if (!service) return;
+                        tableHtml += `<tr class="border-b"><td class="p-2 font-medium">${service.nome}</td>`;
+                        if (service.precos) {
+                            service.precos.forEach((tier, tierIndex) => {
+                                tableHtml += `<td class="p-1"><input type="number" step="0.01" class="table-price-input" value="${tier.valor}" data-category="${category}" data-service-index="${serviceIndex}" data-tier-index="${tierIndex}"></td>`;
+                            });
+                        } else {
+                            tableHtml += `<td class="p-1" colspan="${TIERS.length}"><input type="number" step="0.01" class="table-price-input w-32" value="${service.preco}" data-category="${category}" data-service-index="${serviceIndex}"></td>`;
+                        }
+                        const isObrigatorio = service.obrigatorio ? 'checked' : '';
+                        const isOculto = service.oculto ? 'checked' : '';
+                        tableHtml += `
+                                <td class="p-2 text-center">
+                                    <input type="checkbox" class="obrigatorio-checkbox" ${isObrigatorio} data-category="${category}" data-id="${service.id}">
+                                </td>
+                                <td class="p-2 text-center">
+                                    <input type="checkbox" class="oculto-checkbox" ${isOculto} data-category="${category}" data-id="${service.id}">
+                                </td>
+                                <td class="p-2 text-center whitespace-nowrap"> 
+                                    <button class="edit-service-btn text-blue-500 hover:text-blue-700 p-1" title="Editar Serviço" data-id="${service.id}" data-category="${category}">✏️</button> 
+                                    <button class="delete-service-btn text-red-500 hover:text-red-700 p-1" title="Excluir Serviço" data-id="${service.id}" data-category="${category}">🗑️</button> 
+                                </td> 
+                            </tr>`;
+                    });
+                }
+
+                tableHtml += `</tbody></table></div>`;
+                container.innerHTML += tableHtml;
+            });
+
+            container.querySelectorAll('.table-price-input').forEach(input => {
+                input.addEventListener('change', (e) => {
+                    const {
+                        category,
+                        serviceIndex,
+                        tierIndex
+                    } = e.target.dataset;
+                    const value = parseFloat(e.target.value);
+                    updatePriceInDB(category, parseInt(serviceIndex), tierIndex !== undefined ? parseInt(tierIndex) : undefined, value);
+                });
+            });
+
+            container.querySelectorAll('.edit-service-btn').forEach(button => {
+                button.addEventListener('click', handleEditServiceClick);
+            });
+            container.querySelectorAll('.delete-service-btn').forEach(button => {
+                button.addEventListener('click', handleDeleteServiceClick);
+            });
+
+            container.querySelectorAll('.obrigatorio-checkbox').forEach(checkbox => {
+                checkbox.addEventListener('change', async (e) => {
+                    const { category, id } = e.target.dataset;
+                    const isChecked = e.target.checked;
+
+                    const newPriceState = JSON.parse(JSON.stringify(priceState));
+                    const service = newPriceState[category].find(s => s.id === id);
+
+                    if (service) {
+                        service.obrigatorio = isChecked;
+                        try {
+                            await setDoc(dbRef.config, { priceState: newPriceState }, { merge: true });
+                            toast.show('Status de serviço obrigatório atualizado.');
+                        } catch (error) {
+                            console.error("Erro ao atualizar status de serviço obrigatório:", error);
+                            toast.show("Falha ao salvar a alteração.");
+                            e.target.checked = !isChecked; // Reverte a mudança visual em caso de erro
+                        }
+                    }
+                });
+            });
+
+            container.querySelectorAll('.oculto-checkbox').forEach(checkbox => {
+                checkbox.addEventListener('change', async (e) => {
+                    const { category, id } = e.target.dataset;
+                    const isChecked = e.target.checked;
+
+                    const newPriceState = JSON.parse(JSON.stringify(priceState));
+                    const service = newPriceState[category].find(s => s.id === id);
+
+                    if (service) {
+                        service.oculto = isChecked;
+                        try {
+                            await setDoc(dbRef.config, { priceState: newPriceState }, { merge: true });
+                            toast.show('Status de visibilidade do serviço atualizado.');
+                        } catch (error) {
+                            console.error("Erro ao atualizar status de visibilidade:", error);
+                            toast.show("Falha ao salvar a alteração.");
+                            e.target.checked = !isChecked;
+                        }
+                    }
+                });
+            });
+        }
+
+        function handleEditServiceClick(e) {
+            const {
+                id,
+                category
+            } = e.currentTarget.dataset;
+            const service = priceState[category].find(s => s.id === id);
+            if (service) {
+                editServiceModal.show({ ...service,
+                    category
+                });
+            }
+        }
+
+        function handleDeleteServiceClick(e) {
+            const {
+                id,
+                category
+            } = e.currentTarget.dataset;
+            const service = priceState[category].find(s => s.id === id);
+            if (service) {
+                modal.show(
+                    'Excluir Serviço',
+                    `Tem certeza que deseja excluir o serviço "${service.nome}"? Esta ação é permanente.`,
+                    () => deleteServiceFromDB(category, id)
+                );
+            }
+        }
+
+        function exportProposalToWord() {
+            const clientName = document.getElementById('clientName').value || 'proposta';
+            const fileName = `Proposta_${clientName.replace(/\s+/g, '_')}.doc`;
+
+            // 1. Create Cover Page HTML
+            const coverPageHtml = `
+                <div style="width: 100%; height: 297mm; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center;">
+                    <img src="https://static.wixstatic.com/media/d524d5_c6d471c32a0f41ea9f2080d05477a60d~mv2.png" style="width: 150px; margin-bottom: 40px;">
+                    <h1 style="font-size: 28px; font-weight: bold; margin-bottom: 20px;">Proposta Comercial</h1>
+                    <p style="font-size: 16px;">${new Date().toLocaleDateString('pt-BR')}</p>
+                </div>
+                <br clear="all" style="page-break-before:always">
+            `;
+
+            // 2. Get Proposal Content
+            const proposalContent = document.getElementById('proposal-preview-content').innerHTML;
+
+            // 3. Combine and wrap in full HTML with styles for Word
+            const fullHtml = `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="UTF-8">
+                    <style>
+                        body {
+                            font-family: Arial, sans-serif;
+                            font-size: 11pt;
+                        }
+                        table { border-collapse: collapse; width: 100%; margin-bottom: 1rem; }
+                        th, td { border: 1px solid #cccccc; text-align: left; padding: 8px; }
+                        th { background-color: #f2f2f2; }
+                        h2, h3 { color: #2c5282; }
+                        ul { margin: 0; padding-left: 20px; }
+                    </style>
+                </head>
+                <body>
+                    ${coverPageHtml}
+                    ${proposalContent}
+                </body>
+                </html>
+            `;
+
+            const converted = htmlDocx.asBlob(fullHtml, {
+                orientation: 'portrait',
+                margins: { top: 1440, right: 1440, bottom: 1440, left: 1440 } // 1 inch = 1440 twips, approx 2.54cm
+            });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(converted);
+            link.download = fileName;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function exportProposalToPdf() {
+            const clientName = document.getElementById('clientName').value || 'proposta';
+            const fileName = `Proposta_${clientName.replace(/\s+/g, '_')}.pdf`;
+
+            // 1. Create a container for PDF generation
+            const pdfContainer = document.createElement('div');
+
+            // 2. Create the Cover Page
+            const coverPage = document.createElement('div');
+            coverPage.style.width = '210mm';
+            coverPage.style.height = '297mm';
+            coverPage.style.display = 'flex';
+            coverPage.style.flexDirection = 'column';
+            coverPage.style.justifyContent = 'center';
+            coverPage.style.alignItems = 'center';
+            coverPage.style.border = '1px solid #ccc';
+            coverPage.innerHTML = `
+                <img src="https://static.wixstatic.com/media/d524d5_c6d471c32a0f41ea9f2080d05477a60d~mv2.png" style="width: 150px; margin-bottom: 40px;">
+                <h1 style="font-size: 28px; font-weight: bold; margin-bottom: 20px;">Proposta Comercial</h1>
+                <p style="font-size: 16px;">${new Date().toLocaleDateString('pt-BR')}</p>
+            `;
+            pdfContainer.appendChild(coverPage);
+
+            // 3. Clone the proposal content
+            const proposalContent = document.getElementById('proposal-preview-content').cloneNode(true);
+            proposalContent.classList.add('html2pdf__page-break'); // Add page break after cover
+            pdfContainer.appendChild(proposalContent);
+
+            // 4. Set options for html2pdf
+            const opt = {
+                margin: 15, // in mm
+                filename: fileName,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2, useCORS: true },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+                pagebreak: { mode: ['css'] }
+            };
+
+            html2pdf().from(pdfContainer).set(opt).save();
+        }
+
+        // --- CLIENTS FUNCTIONS --- 
+
+        const clientHistoryModal = {
+            overlay: document.getElementById('client-history-modal'),
+            detailsContainer: document.getElementById('client-history-details'),
+            proposalsContainer: document.getElementById('client-history-proposals'),
+            closeBtn: document.getElementById('modal-history-close-btn'),
+            show: () => clientHistoryModal.overlay.classList.add('visible'),
+            hide: () => clientHistoryModal.overlay.classList.remove('visible')
+        };
+        clientHistoryModal.closeBtn.addEventListener('click', clientHistoryModal.hide);
+
+        function showClientHistory(client) {
+            clientHistoryModal.detailsContainer.innerHTML = `
+                <p><strong>Nome:</strong> ${client.name || ''}</p>
+                <p><strong>CNPJ:</strong> ${client.cnpj || ''}</p>
+                <p><strong>Endereço:</strong> ${client.address || ''}</p>
+            `;
+
+            const clientProposals = savedProposals.filter(p => p.clientData.id === client.id);
+
+            if (clientProposals.length > 0) {
+                 clientHistoryModal.proposalsContainer.innerHTML = clientProposals.map(p => {
+                    const totalValue = p.services.porVida.reduce((acc, s) => acc + (s.price * p.clientData.numVidas), 0) +
+                                       p.services.anual.reduce((acc, s) => acc + (s.price * (s.tipo === 'fixo' ? 1 : s.quantity) / 12), 0) +
+                                       p.services.avulsos.reduce((acc, s) => acc + (s.price / 12), 0);
+                     const taxAndProfitDivisor = 1 - ((p.clientData.tax / 100) + (p.clientData.profit / 100));
+                     const finalValue = taxAndProfitDivisor > 0 ? totalValue / taxAndProfitDivisor : 0;
+
+                    return `
+                        <div class="p-3 bg-gray-100 rounded-md text-sm">
+                            <div class="flex justify-between items-center">
+                                <p><strong>Data:</strong> ${new Date(p.clientData.lastSaved).toLocaleDateString('pt-BR')}</p>
+                                <p><strong>Status:</strong> <span class="font-semibold">${p.status || 'Criada'}</span></p>
+                                <p><strong>Valor Mensal:</strong> <span class="font-bold">${formatCurrency(finalValue)}</span></p>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            } else {
+                clientHistoryModal.proposalsContainer.innerHTML = '<p class="text-center text-gray-500">Nenhuma proposta encontrada para este cliente.</p>';
+            }
+
+            clientHistoryModal.show();
+        }
+
+        function renderClientsList(filter = '') {
+            const container = document.getElementById('clients-list-container');
+            if (!container) return;
+
+            const lowerCaseFilter = filter.toLowerCase();
+            const filteredClients = clients.filter(client =>
+                (client.name && client.name.toLowerCase().includes(lowerCaseFilter)) ||
+                (client.cnpj && client.cnpj.toLowerCase().includes(lowerCaseFilter))
+            );
+
+            container.innerHTML = filteredClients.map(client => ` 
+                <div class="p-4 bg-gray-50 rounded-lg flex justify-between items-center"> 
+                    <div> 
+                        <p class="font-bold text-gray-800">${client.name || 'Sem Nome'}</p> 
+                        <p class="text-sm text-gray-600">${client.cnpj || 'Sem CNPJ'}</p> 
+                        <p class="text-xs text-gray-500">${client.contactPerson || ''} ${client.contactRole ? `(${client.contactRole})` : ''}</p> 
+                    </div> 
+                    <div class="flex gap-2">
+                        <button class="history-client-btn bg-green-100 text-green-800 px-3 py-1 rounded" data-id="${client.id}">Ver Histórico</button>
+                        <button class="edit-client-btn bg-blue-100 text-blue-800 px-3 py-1 rounded" data-id="${client.id}">Editar</button>
+                        <button class="delete-client-btn bg-red-100 text-red-800 px-3 py-1 rounded" data-id="${client.id}">Excluir</button>
+                    </div> 
+                </div> 
+            `).join('') || '<p class="text-center text-gray-500">Nenhum cliente encontrado.</p>';
+
+            container.querySelectorAll('.history-client-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const client = clients.find(c => c.id === e.currentTarget.dataset.id);
+                    if (client) showClientHistory(client);
+                });
+            });
+            container.querySelectorAll('.edit-client-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const client = clients.find(c => c.id === e.currentTarget.dataset.id);
+                    if (client) clientModal.show(client);
+                });
+            });
+            container.querySelectorAll('.delete-client-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const client = clients.find(c => c.id === e.currentTarget.dataset.id);
+                    if (client) {
+                        modal.show('Excluir Cliente', `Tem certeza que deseja excluir "${client.name}"?`, () => deleteClient(client.id));
+                    }
+                });
+            });
+        }
+
+        async function saveClient(clientData, showToast = true) {
+            const id = clientData.id || doc(collection(db, 'dummy')).id;
+            const clientRef = doc(dbRef.clients, id);
+            try {
+                const dataToSave = { ...clientData,
+                    id
+                };
+                delete dataToSave.proposalId;
+                await setDoc(clientRef, dataToSave, {
+                    merge: true
+                });
+                if (showToast) {
+                    toast.show(`Cliente ${clientData.id ? 'atualizado' : 'salvo'} com sucesso!`);
+                }
+                return id;
+            } catch (error) {
+                console.error("Erro ao salvar cliente:", error);
+                if (showToast) toast.show("Erro ao salvar cliente.");
+            }
+        }
+
+        async function deleteClient(clientId) {
+            try {
+                await deleteDoc(doc(dbRef.clients, clientId));
+                toast.show('Cliente excluído com sucesso.');
+            } catch (error) {
+                console.error("Erro ao excluir cliente:", error);
+                toast.show("Erro ao excluir cliente.");
+            }
+        }
+
+        function renderServiceCategories() {
+            const container = document.getElementById('category-list-container');
+            if (!container) return;
+
+            container.innerHTML = serviceCategories.map(category => `
+                <div class="p-3 bg-gray-50 rounded-lg flex justify-between items-center">
+                    <p class="font-semibold text-gray-700">${category.name}</p>
+                    <div>
+                        <button class="edit-category-btn text-blue-500 hover:text-blue-700 p-1" data-id="${category.id}">✏️ Editar</button>
+                        <button class="delete-category-btn text-red-500 hover:text-red-700 p-1" data-id="${category.id}">🗑️ Excluir</button>
+                    </div>
+                </div>
+            `).join('') || '<p class="text-center text-gray-500">Nenhuma categoria cadastrada.</p>';
+
+            container.querySelectorAll('.edit-category-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const category = serviceCategories.find(c => c.id === e.currentTarget.dataset.id);
+                    if (category) categoryModal.show(category);
+                });
+            });
+
+            container.querySelectorAll('.delete-category-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const categoryId = e.currentTarget.dataset.id;
+                    const category = serviceCategories.find(c => c.id === categoryId);
+                    if (category) {
+                        modal.show(
+                            'Excluir Categoria',
+                            `Tem certeza que deseja excluir a categoria "${category.name}"? Os serviços associados ficarão sem categoria.`,
+                            () => deleteServiceCategory(categoryId)
+                        );
+                    }
+                });
+            });
+        }
+
+        function updateSavedProposalsTab(proposals) {
+            const savedTab = document.querySelector('.tab-button[data-tab="saved"]');
+            if (!savedTab) return;
+
+            const newProposalsCount = proposals.filter(p => p.status === 'Solicitada pelo Cliente' && p.viewedByVendor !== true).length;
+
+            const existingBadge = savedTab.querySelector('.notification-badge');
+            if (existingBadge) existingBadge.remove();
+
+            if (newProposalsCount > 0) {
+                const badge = document.createElement('span');
+                badge.className = 'notification-badge ml-2 bg-red-500 text-white text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full';
+                badge.textContent = newProposalsCount;
+                savedTab.appendChild(badge);
+            }
+        }
+        // --- Event Listeners --- 
+        document.getElementById('add-category-btn').addEventListener('click', () => categoryModal.show());
+        categoryModal.cancelBtn.addEventListener('click', () => categoryModal.hide());
+        categoryModal.form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const categoryData = {
+                id: categoryModal.idInput.value,
+                name: categoryModal.nameInput.value,
+            };
+            saveServiceCategory(categoryData);
+        });
+
+        document.getElementById('add-service-btn').addEventListener('click', () => addServiceModal.show());
+        addServiceModal.cancelBtn.addEventListener('click', () => addServiceModal.hide());
+        addServiceModal.form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const newService = {
+                id: (document.getElementById('service-name').value.toLowerCase().replace(/\s+/g, '_') + '_' + Date.now()),
+                nome: document.getElementById('service-name').value,
+                descricao: document.getElementById('service-description').value,
+                categoryId: document.getElementById('service-category-select').value,
+            };
+            const category = document.getElementById('service-billing-model').value;
+            const pricingType = document.getElementById('service-pricing-type').value;
+
+            if (pricingType === 'faixa') {
+                newService.precos = buildTiers(Array(9).fill(0));
+            } else {
+                newService.preco = 0;
+                newService.tipo = document.getElementById('service-type').value;
+            }
+
+            const newPriceState = JSON.parse(JSON.stringify(priceState));
+            newPriceState[category].push(newService);
+
+            try {
+                await setDoc(dbRef.config, {
+                    priceState: newPriceState
+                }, {
+                    merge: true
+                });
+                toast.show('Serviço adicionado com sucesso!');
+            } catch (error) {
+                console.error("Erro ao adicionar serviço:", error);
+                toast.show("Falha ao adicionar novo serviço.");
+            } finally {
+                addServiceModal.hide();
+            }
+        });
+
+        const pricingTypeSelect = document.getElementById('service-pricing-type');
+        const serviceTypeSelectDiv = document.getElementById('service-type-wrapper');
+        pricingTypeSelect.addEventListener('change', (e) => {
+            serviceTypeSelectDiv.style.display = e.target.value === 'faixa' ? 'none' : 'block';
+        });
+        pricingTypeSelect.dispatchEvent(new Event('change'));
+
+        editServiceModal.cancelBtn.addEventListener('click', () => editServiceModal.hide());
+        editServiceModal.form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const serviceData = {
+                id: editServiceModal.serviceIdInput.value,
+                originalCategory: editServiceModal.serviceOriginalCategoryInput.value,
+                newCategory: editServiceModal.billingModelSelect.value,
+                name: editServiceModal.serviceNameInput.value,
+                descricao: editServiceModal.serviceDescriptionInput.value,
+                categoryId: editServiceModal.categorySelect.value,
+                pricingType: editServiceModal.servicePricingTypeSelect.value,
+                serviceType: editServiceModal.serviceTypeSelect.value
+            };
+            await updateServiceInDB(serviceData);
+        });
+
+        const editPricingTypeSelect = document.getElementById('edit-service-pricing-type');
+        const editServiceTypeSelectDiv = document.getElementById('edit-service-type-wrapper');
+        editPricingTypeSelect.addEventListener('change', (e) => {
+            editServiceTypeSelectDiv.style.display = e.target.value === 'faixa' ? 'none' : 'block';
+        });
+
+        function validateClientFields() {
+            const name = clientNameField.value.trim();
+            const email = clientEmailField.value.trim();
+            const phone = clientPhoneField.value.trim();
+            return name !== '' && email !== '' && phone !== '';
+        }
+
+        async function handleQuestionnaireSubmit() {
+            const isClientView = !auth.currentUser || auth.currentUser.isAnonymous;
+            if (!isClientView) return;
+
+            if (!validateClientFields()) {
+                toast.show('Por favor, preencha corretamente os campos de Nome, E-mail e Telefone para continuar.');
+                return;
+            }
+
+            const proposalData = getFormData();
+
+            const questionnaireAnswers = {
+                activities: document.getElementById('q-activities').value,
+                locations: document.getElementById('q-locations').value,
+                documents: Array.from(document.querySelectorAll('#q-documents input:checked')).map(cb => cb.parentElement.textContent.trim()),
+                cipa: document.getElementById('q-cipa').value,
+                machines: document.getElementById('q-machines').value,
+                confined: document.getElementById('q-confined').value,
+                noise: document.getElementById('q-noise').value,
+                heat: document.getElementById('q-heat').value,
+                danger: document.getElementById('q-danger').value,
+                radioactive: document.getElementById('q-radioactive').value,
+                area: document.getElementById('q-area').value,
+                other: document.getElementById('q-other').value,
+            };
+
+            const clientId = doc(collection(db, 'dummy')).id;
+            const proposalId = doc(collection(db, 'dummy')).id;
+
+            proposalData.clientData.id = clientId;
+            proposalData.clientData.proposalId = proposalId;
+            proposalData.status = "Solicitada pelo Cliente";
+            proposalData.questionnaireAnswers = questionnaireAnswers;
+            proposalData.history = [{
+                status: "Solicitada pelo Cliente",
+                timestamp: new Date().toISOString(),
+                observation: "Proposta solicitada via formulário online."
+            }];
+
+            const clientToSave = {
+                id: clientId,
+                name: proposalData.clientData.clientName,
+                cnpj: proposalData.clientData.clientCnpj,
+                address: proposalData.clientData.clientAddress,
+                contactPerson: proposalData.clientData.clientContactPerson,
+                contactRole: proposalData.clientData.clientContactRole,
+                email: proposalData.clientData.clientEmail,
+                phone: proposalData.clientData.clientPhone
+            };
+
+            const publicProposalRef = doc(db, `publicArtifacts/${appId}/proposals`, proposalId);
+            const publicClientRef = doc(db, `publicArtifacts/${appId}/clients`, clientId);
+
+            try {
+                const batch = writeBatch(db);
+                batch.set(publicClientRef, clientToSave);
+                batch.set(publicProposalRef, proposalData);
+
+                await batch.commit();
+
+                thankYouModal.show();
+
+                const btnGenerate = document.getElementById('btn-generate-proposal');
+                btnGenerate.disabled = true;
+                btnGenerate.textContent = 'Orçamento Solicitado';
+                btnGenerate.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+                btnGenerate.classList.add('bg-gray-400', 'cursor-not-allowed');
+
+
+            } catch (error) {
+                console.error("Erro ao enviar solicitação: ", error);
+                toast.show('Erro ao processar a solicitação.');
+            }
+        }
+
+
+        document.getElementById('btn-save-proposal').addEventListener('click', saveProposal);
+        document.getElementById('questionnaire-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            handleQuestionnaireSubmit();
+        });
+        document.querySelectorAll('.q-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const group = btn.dataset.group;
+                document.querySelectorAll(`.q-btn[data-group="${group}"]`).forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                document.getElementById(`q-${group}`).value = btn.textContent;
+            });
+        });
+        document.getElementById('btn-new-proposal').addEventListener('click', () => clearForm(true));
+        document.getElementById('add-palestra').addEventListener('click', () => {
+            const vidas = parseInt(formElements.numVidas.value) || 0;
+            const price = getPriceFromState(vidas, priceState.palestra.precos);
+            createDynamicRow('palestras-container', 'Tema da Palestra', runAllUpdates, price);
+        });
+        document.getElementById('add-outro').addEventListener('click', () => createDynamicRow('outros-container', 'Descrição do Serviço', runAllUpdates));
+        document.getElementById('export-word-btn').addEventListener('click', exportProposalToWord);
+        document.getElementById('export-pdf-btn').addEventListener('click', exportProposalToPdf);
+
+        document.querySelectorAll('.tab-button').forEach(button => {
+            button.addEventListener('click', () => {
+                document.querySelectorAll('.tab-button, .tab-content').forEach(el => el.classList.remove('active'));
+                button.classList.add('active');
+                document.getElementById(`tab-${button.dataset.tab}`).classList.add('active');
+            });
+        });
+
+        document.addEventListener('input', (e) => {
+            if (e.target.closest('#tab-generator')) {
+                if (e.target.id === 'numVidas') {
+                    updateSuggestedValues();
+                }
+                runAllUpdates();
+            }
+        });
+
+        const questionnaireAnswersModal = {
+            overlay: document.getElementById('questionnaire-answers-modal'),
+            content: document.getElementById('questionnaire-answers-content'),
+            closeBtn: document.getElementById('modal-answers-close-btn'),
+            show: () => questionnaireAnswersModal.overlay.classList.add('visible'),
+            hide: () => questionnaireAnswersModal.overlay.classList.remove('visible')
+        };
+        questionnaireAnswersModal.closeBtn.addEventListener('click', questionnaireAnswersModal.hide);
+
+        const thankYouModal = {
+            overlay: document.getElementById('thank-you-modal'),
+            closeBtn: document.getElementById('modal-thank-you-close-btn'),
+            show: () => thankYouModal.overlay.classList.add('visible'),
+            hide: () => thankYouModal.overlay.classList.remove('visible')
+        };
+        thankYouModal.closeBtn.addEventListener('click', thankYouModal.hide);
+
+        savedProposalsContainer.addEventListener('click', (e) => {
+            if (e.target.classList.contains('load-proposal-btn')) {
+                loadProposal(e.target.dataset.id);
+                document.querySelector('.tab-button[data-tab="generator"]').click();
+            }
+            if (e.target.classList.contains('delete-proposal-btn')) {
+                deleteProposal(e.target.dataset.id);
+            }
+             if (e.target.classList.contains('view-answers-btn')) {
+                const proposal = savedProposals.find(p => p.id === e.target.dataset.id);
+                if (proposal && proposal.questionnaireAnswers) {
+                    const answers = proposal.questionnaireAnswers;
+                    const contentHtml = `
+                        <div class="p-2 bg-gray-100 rounded"><strong>1) Atividades da empresa:</strong><p class="pl-2">${answers.activities || 'Não preenchido'}</p></div>
+                        <div class="p-2 bg-gray-100 rounded"><strong>2) Quantas sedes:</strong><p class="pl-2">${answers.locations || 'Não preenchido'}</p></div>
+                        <div class="p-2 bg-gray-100 rounded"><strong>3) Documentos existentes:</strong><p class="pl-2">${answers.documents.join(', ') || 'Nenhum'}</p></div>
+                        <div class="p-2 bg-gray-100 rounded"><strong>4) Possui CIPA:</strong><p class="pl-2">${answers.cipa || 'Não preenchido'}</p></div>
+                        <div class="p-2 bg-gray-100 rounded"><strong>5) Atividades com máquinas:</strong><p class="pl-2">${answers.machines || 'Não preenchido'}</p></div>
+                        <div class="p-2 bg-gray-100 rounded"><strong>6) Trabalho em altura/espaço confinado:</strong><p class="pl-2">${answers.confined || 'Não preenchido'}</p></div>
+                        <div class="p-2 bg-gray-100 rounded"><strong>7) Exposição a ruído:</strong><p class="pl-2">${answers.noise || 'Não preenchido'}</p></div>
+                        <div class="p-2 bg-gray-100 rounded"><strong>8) Exposição ao calor:</strong><p class="pl-2">${answers.heat || 'Não preenchido'}</p></div>
+                        <div class="p-2 bg-gray-100 rounded"><strong>9) Atividades perigosas (eletricidade, etc.):</strong><p class="pl-2">${answers.danger || 'Não preenchido'}</p></div>
+                        <div class="p-2 bg-gray-100 rounded"><strong>10) Manuseio de material radioativo:</strong><p class="pl-2">${answers.radioactive || 'Não preenchido'}</p></div>
+                        <div class="p-2 bg-gray-100 rounded"><strong>11) Área construída (+750m² ou 2+ pavimentos):</strong><p class="pl-2">${answers.area || 'Não preenchido'}</p></div>
+                        <div class="p-2 bg-gray-100 rounded"><strong>12) Outras informações:</strong><p class="pl-2">${answers.other || 'Nenhuma'}</p></div>
+                    `;
+                    questionnaireAnswersModal.content.innerHTML = contentHtml;
+                    questionnaireAnswersModal.show();
+                } else {
+                    toast.show("Respostas do questionário não encontradas para esta proposta.");
+                }
+            }
+
+            const proposalId = e.target.dataset.id;
+            const proposal = savedProposals.find(p => p.id === proposalId);
+
+            if (proposal && proposal.isNew) {
+                 const proposalRef = doc(db, `publicArtifacts/${appId}/proposals`, proposalId);
+                 updateDoc(proposalRef, { viewedByVendor: true }).catch(err => console.error("Erro ao marcar proposta como visualizada:", err));
+            }
+
+            if (e.target.classList.contains('details-proposal-btn')) {
+                if (proposal) {
+                    proposalDetailsModal.proposalIdInput.value = proposal.id;
+                    proposalDetailsModal.statusSelect.value = proposal.status || 'Criada';
+                    proposalDetailsModal.observationsInput.value = '';
+
+                    const historyHtml = (proposal.history || []).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)).map(h => ` 
+                        <div class="p-2 bg-gray-100 rounded"> 
+                            <p class="font-semibold">${h.status} - <span class="font-normal text-gray-600">${new Date(h.timestamp).toLocaleString('pt-BR')}</span></p> 
+                            <p class="text-gray-800 italic">"${h.observation}"</p> 
+                        </div> 
+                    `).join('');
+                    proposalDetailsModal.historyContainer.innerHTML = historyHtml;
+
+                    proposalDetailsModal.show();
+                }
+            }
+        });
+
+        // Listeners da Aba de Clientes 
+        document.getElementById('add-client-btn').addEventListener('click', () => clientModal.show());
+        document.getElementById('generator-add-client-btn').addEventListener('click', () => clientModal.show());
+        clientModal.cancelBtn.addEventListener('click', () => clientModal.hide());
+        clientModal.form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const clientData = {
+                id: clientModal.idInput.value,
+                name: clientModal.nameInput.value,
+                cnpj: clientModal.cnpjInput.value,
+                address: clientModal.addressInput.value,
+                contactPerson: clientModal.contactPersonInput.value,
+                contactRole: clientModal.contactRoleInput.value,
+                phone: clientModal.phoneInput.value,
+                email: clientModal.emailInput.value,
+                type: clientModal.typeInput.value,
+                cnae: clientModal.cnaeInput.value,
+            };
+            await saveClient(clientData);
+            clientModal.hide();
+        });
+        document.getElementById('client-search-input').addEventListener('input', (e) => {
+            renderClientsList(e.target.value);
+        });
+
+        // --- Integração Gerador <-> Clientes --- 
+        const clientNameInput = document.getElementById('clientName');
+        const clientSearchResults = document.getElementById('client-search-results');
+
+        const handleClientSearch = () => {
+             // Limpa os campos de contato ao digitar um novo nome
+            formElements.clientContactPerson.value = '';
+            formElements.clientContactRole.value = '';
+            formElements.clientEmail.value = '';
+            formElements.clientPhone.value = '';
+
+            const searchTerm = clientNameInput.value.toLowerCase();
+            if (searchTerm.length < 2) {
+                clientSearchResults.innerHTML = '';
+                clientSearchResults.classList.add('hidden');
+                return;
+            }
+
+            const filteredClients = clients.filter(c => c.name.toLowerCase().includes(searchTerm));
+
+            if (filteredClients.length > 0) {
+                clientSearchResults.innerHTML = filteredClients.map(c =>
+                    `<div class="p-2 hover:bg-gray-100 cursor-pointer" data-id="${c.id}">${c.name}</div>`
+                ).join('');
+                clientSearchResults.classList.remove('hidden');
+            } else {
+                clientSearchResults.classList.add('hidden');
+            }
+        };
+
+        clientNameInput.addEventListener('input', handleClientSearch);
+
+        clientSearchResults.addEventListener('click', (e) => {
+            if (e.target.dataset.id) {
+                const clientId = e.target.dataset.id;
+                const client = clients.find(c => c.id === clientId);
+                if (client) {
+                    formElements.generatorClientId.value = client.id;
+                    formElements.clientName.value = client.name || '';
+                    formElements.clientCnpj.value = client.cnpj || '';
+                    formElements.clientAddress.value = client.address || '';
+                    formElements.clientContactPerson.value = client.contactPerson || '';
+                    formElements.clientContactRole.value = client.contactRole || '';
+                    formElements.clientEmail.value = client.email || ''; 
+                    formElements.clientPhone.value = client.phone || ''; 
+                }
+                clientSearchResults.innerHTML = '';
+                clientSearchResults.classList.add('hidden');
+            }
+        });
+
+        document.getElementById('service-search-input').addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+
+            document.querySelectorAll('.service-card').forEach(card => {
+                const serviceName = card.querySelector('h4').textContent.toLowerCase();
+                const matches = serviceName.includes(searchTerm);
+                card.style.display = matches ? '' : 'none';
+            });
+
+            // Oculta os títulos das categorias se todos os serviços estiverem ocultos
+            document.querySelectorAll('#servicos-por-vida > div, #servicos-anuais > div').forEach(categoryWrapper => {
+                const services = categoryWrapper.querySelectorAll('.service-card');
+                const allHidden = Array.from(services).every(s => s.style.display === 'none');
+                categoryWrapper.style.display = allHidden ? 'none' : '';
+            });
+        });
+
+        document.body.addEventListener('click', (e) => {
+            if (!clientNameInput.contains(e.target)) {
+                clientSearchResults.classList.add('hidden');
+            }
+        });
+
+        // --- LÓGICA DO MODAL DE REAJUSTE DE PREÇOS --- 
+        const openAdjustmentModalBtn = document.getElementById('open-adjustment-modal-btn');
+
+        openAdjustmentModalBtn.addEventListener('click', () => {
+            const form = priceAdjustmentModal.form;
+            form.innerHTML = '';
+
+            Object.keys(priceState).forEach(category => {
+                const services = priceState[category];
+                if (Array.isArray(services)) {
+                    services.forEach(service => {
+                        if (service.precos !== undefined || service.preco !== undefined) {
+                            const div = document.createElement('div');
+                            div.innerHTML = ` 
+                                <label class="flex items-center p-2 rounded-md hover:bg-gray-100"> 
+                                    <input type="checkbox" class="service-checkbox h-4 w-4 text-cyan-600 border-gray-300 rounded" data-category="${category}" data-id="${service.id}"> 
+                                    <span class="ml-3 text-gray-800">${service.nome}</span> 
+                                </label> 
+                            `;
+                            form.appendChild(div);
+                        }
+                    });
+                }
+            });
+
+            priceAdjustmentModal.show();
+        });
+
+        priceAdjustmentModal.selectAllCheckbox.addEventListener('change', (e) => {
+            const isChecked = e.target.checked;
+            priceAdjustmentModal.form.querySelectorAll('.service-checkbox').forEach(checkbox => {
+                checkbox.checked = isChecked;
+            });
+        });
+
+        priceAdjustmentModal.cancelBtn.addEventListener('click', priceAdjustmentModal.hide);
+        priceAdjustmentModal.applyBtn.addEventListener('click', async () => {
+            const adjustmentPercent = parseFloat(document.getElementById('adjustment-percent').value);
+            if (isNaN(adjustmentPercent) || adjustmentPercent === 0) {
+                toast.show('Por favor, insira uma porcentagem de reajuste válida.');
+                return;
+            }
+
+            const multiplier = 1 + (adjustmentPercent / 100);
+            const newPriceState = JSON.parse(JSON.stringify(priceState));
+            let changesMade = false;
+
+            priceAdjustmentModal.form.querySelectorAll('.service-checkbox:checked').forEach(checkbox => {
+                const {
+                    category,
+                    id
+                } = checkbox.dataset;
+                const service = newPriceState[category].find(s => s.id === id);
+                if (!service) return;
+
+                if (service.precos) {
+                    service.precos.forEach(tier => tier.valor = parseFloat((tier.valor * multiplier).toFixed(2)));
+                } else if (service.preco !== undefined) {
+                    service.preco = parseFloat((service.preco * multiplier).toFixed(2));
+                }
+                changesMade = true;
+            });
+
+            if (!changesMade) {
+                toast.show("Nenhum serviço selecionado para reajuste.");
+                return;
+            }
+
+            try {
+                await setDoc(dbRef.config, {
+                    priceState: newPriceState
+                }, {
+                    merge: true
+                });
+                addLogEntry('price', {
+                    action: `Reajuste em massa de <strong>${adjustmentPercent}%</strong> aplicado.`,
+                    user: userId,
+                    value: adjustmentPercent
+                });
+                toast.show('Preços reajustados com sucesso!');
+            } catch (error) {
+                console.error("Erro ao aplicar reajuste de preços:", error);
+                toast.show("Falha ao reajustar os preços.");
+            } finally {
+                priceAdjustmentModal.hide();
+            }
+        });
+
+        // --- LÓGICA DO MODAL DE ACOMPANHAMENTO --- 
+        proposalDetailsModal.cancelBtn.addEventListener('click', proposalDetailsModal.hide);
+        proposalDetailsModal.form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const proposalId = proposalDetailsModal.proposalIdInput.value;
+            const newStatus = proposalDetailsModal.statusSelect.value;
+            const newObservation = proposalDetailsModal.observationsInput.value;
+
+            if (!proposalId) return;
+
+            const proposalRef = doc(dbRef.proposals, proposalId);
+
+            const newHistoryEntry = {
+                status: newStatus,
+                observation: newObservation || 'Status atualizado.',
+                timestamp: new Date().toISOString()
+            };
+
+            try {
+                await updateDoc(proposalRef, {
+                    status: newStatus,
+                    history: arrayUnion(newHistoryEntry)
+                });
+                toast.show("Status da proposta atualizado!");
+                proposalDetailsModal.hide();
+            } catch (error) {
+                console.error("Erro ao atualizar status da proposta:", error);
+                toast.show("Falha ao atualizar o status.");
+            }
+        });
+    });
+    </script>
+</body>
+
+</html>
