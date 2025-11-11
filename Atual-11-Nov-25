@@ -1912,6 +1912,7 @@
             }
         });
 
+        setupListeners();
         onAuthStateChanged(auth, async (user) => {
             const mainTitle = document.querySelector('h1');
             const mainSubtitle = mainTitle.nextElementSibling;
@@ -2048,8 +2049,6 @@
                 userId = null;
                 userEmail = null;
                 userInfoDisplay.textContent = '';
-                mainAppContainer.classList.remove('hidden');
-                loginModal.classList.remove('visible');
 
 
                 btnLogout.textContent = 'Login para Vendedores';
@@ -2138,8 +2137,6 @@
 
             // Garante que o loader seja removido apenas uma vez
             if (loaderElem.style.display !== 'none') {
-                loginModal.classList.remove('visible');
-                mainAppContainer.classList.remove('hidden');
                 loaderElem.style.display = 'none';
                 console.log("Aplicação iniciada com dados do Firebase.");
                 exposeForTesting();
@@ -2171,7 +2168,6 @@
         }
 
         // --- INICIALIZAÇÃO DA APLICAÇÃO ---
-        setupListeners();
 
         // Expõe funções e estado para fins de teste
         window.priceState = priceState;
