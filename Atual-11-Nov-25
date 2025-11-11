@@ -3360,8 +3360,8 @@
 
         savedProposalsContainer.addEventListener('click', (e) => {
             if (e.target.classList.contains('load-proposal-btn')) {
-                loadProposal(e.target.dataset.id);
                 document.querySelector('.tab-button[data-tab="generator"]').click();
+                loadProposal(e.target.dataset.id);
             }
             if (e.target.classList.contains('delete-proposal-btn')) {
                 deleteProposal(e.target.dataset.id);
