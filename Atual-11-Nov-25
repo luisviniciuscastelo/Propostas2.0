@@ -605,7 +605,7 @@
                                     </div>
                                     <button id="generator-add-client-btn" class="w-full md:w-auto bg-cyan-100 text-cyan-800 font-semibold py-3 px-4 rounded-lg hover:bg-cyan-200 transition-all whitespace-nowrap">+ Cadastrar Cliente</button>
                                 </div>
-                                <div>
+                                <div id="proposalName-container">
                                     <input type="text" id="proposalName" placeholder="Nome da Proposta (Ex: Proposta Inicial, Treinamento NR-35)" class="p-3 border rounded-lg focus:ring-2 focus:ring-cyan-500 focus:outline-none w-full">
                                 </div>
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1929,6 +1929,7 @@
             const vendorOnlyTitles = document.querySelectorAll('.vendor-only-title');
             const servicosAvulsosSection = addPalestraBtn.closest('section');
             const mainContentCol = document.getElementById('main-content-col');
+            const proposalNameContainer = document.getElementById('proposalName-container');
 
             // Detach all auth-dependent listeners on any auth state change
             if (unsubscribeProposals) unsubscribeProposals();
@@ -1978,6 +1979,7 @@
                     vendorOnlyTitles.forEach(title => title.style.display = 'block');
                     btnGenerateProposal.style.display = 'none';
                     document.getElementById('btn-new-proposal').style.display = '';
+                    if (proposalNameContainer) proposalNameContainer.style.display = 'block';
 
                     // Mostra a seleção de serviços e esconde o questionário para o vendedor
                     questionnaireContainer.style.display = 'none';
@@ -2062,6 +2064,7 @@
                 btnGenerateProposal.textContent = 'Pedir Orçamento';
                 btnGenerateProposal.className = 'w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 transition-all shadow-md';
                 btnGenerateProposal.style.display = '';
+                if (proposalNameContainer) proposalNameContainer.style.display = 'none';
                 questionnaireContainer.style.display = 'block';
                 serviceSelectionContainer.style.display = 'block';
                 document.getElementById('btn-new-proposal').style.display = 'none';
