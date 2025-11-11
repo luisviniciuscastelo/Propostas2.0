@@ -1566,15 +1566,18 @@
                             const containerId = s.id === 'palestra' ? 'palestras-container' : 'outros-container';
                             createDynamicRow(containerId, s.id === 'palestra' ? 'Tema da Palestra' : 'Descrição do Serviço', runAllUpdates, s.price, s.theme);
                         } else {
-                            const card = document.querySelector(`.service-card[data-id="${s.id}"]`);
-                            if (card) {
-                                if (!card.classList.contains('selected')) card.click();
-                                const priceInput = card.querySelector('.price-input');
+                            const row = document.querySelector(`.service-row[data-id="${s.id}"]`);
+                            if (row) {
+                                const checkbox = row.querySelector('.service-checkbox');
+                                if (checkbox && !checkbox.checked) {
+                                    checkbox.click();
+                                }
+                                const priceInput = row.querySelector('.price-input');
                                 if (priceInput) {
                                     priceInput.value = s.price.toFixed(2).replace('.', ',');
                                 }
-                                if (card.querySelector('.quantity-input')) card.querySelector('.quantity-input').value = s.quantity;
-                                if (card.querySelector('.frequency-selector')) card.querySelector('.frequency-selector').value = s.frequency;
+                                if (row.querySelector('.quantity-input')) row.querySelector('.quantity-input').value = s.quantity;
+                                if (row.querySelector('.frequency-selector')) row.querySelector('.frequency-selector').value = s.frequency;
                             }
                         }
                     });
