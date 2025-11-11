@@ -605,6 +605,9 @@
                                     </div>
                                     <button id="generator-add-client-btn" class="w-full md:w-auto bg-cyan-100 text-cyan-800 font-semibold py-3 px-4 rounded-lg hover:bg-cyan-200 transition-all whitespace-nowrap">+ Cadastrar Cliente</button>
                                 </div>
+                                <div>
+                                    <input type="text" id="proposalName" placeholder="Nome da Proposta (Ex: Proposta Inicial, Treinamento NR-35)" class="p-3 border rounded-lg focus:ring-2 focus:ring-cyan-500 focus:outline-none w-full">
+                                </div>
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <input type="text" id="clientCnpj" placeholder="CNPJ" class="p-3 border rounded-lg bg-gray-100" readonly>
                                     <input type="text" id="clientAddress" placeholder="Endereço Completo" class="p-3 border rounded-lg md:col-span-2 bg-gray-100" readonly>
@@ -1203,6 +1206,7 @@
             id: document.getElementById('proposalId'),
             generatorClientId: document.getElementById('generatorClientId'),
             clientName: document.getElementById('clientName'),
+            proposalName: document.getElementById('proposalName'),
             clientCnpj: document.getElementById('clientCnpj'),
             clientAddress: document.getElementById('clientAddress'),
             clientContactPerson: document.getElementById('clientContactPerson'),
@@ -1651,11 +1655,13 @@
                 const viewAnswersButton = p.status === 'Solicitada pelo Cliente' ?
                     `<button class="view-answers-btn bg-cyan-100 text-cyan-800 px-3 py-1 rounded" data-id="${p.id}">Ver Respostas</button>` : '';
 
+                const proposalDisplayName = p.clientData.proposalName ? `<span class="font-normal text-gray-600">- ${p.clientData.proposalName}</span>` : '';
+
                 return `
                 <div class="p-4 rounded-lg flex justify-between items-center ${newProposalHighlight} ${acceptanceHighlight}">
                     <div>
                         <div class="flex items-center gap-3">
-                            <p class="font-bold text-gray-800">${p.clientData.clientName || 'Sem nome'}</p>
+                            <p class="font-bold text-gray-800">${p.clientData.clientName || 'Sem nome'} ${proposalDisplayName}</p>
                             <span class="text-xs font-semibold px-2 py-1 rounded-full ${statusColor}">${status}</span>
                             ${newProposalBadge}
                         </div>
@@ -2694,7 +2700,7 @@
 
         function clearForm(resetDefaults = true) {
             const isClientView = !auth.currentUser || auth.currentUser.isAnonymous;
-            const fieldsToClear = ['proposalId', 'generatorClientId', 'clientName', 'clientCnpj', 'clientAddress', 'clientContactPerson', 'clientContactRole', 'clientEmail', 'clientPhone'];
+            const fieldsToClear = ['proposalId', 'generatorClientId', 'clientName', 'proposalName', 'clientCnpj', 'clientAddress', 'clientContactPerson', 'clientContactRole', 'clientEmail', 'clientPhone'];
             fieldsToClear.forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.value = '';
@@ -2992,11 +2998,14 @@
                      const taxAndProfitDivisor = 1 - ((p.clientData.tax / 100) + (p.clientData.profit / 100));
                      const finalValue = taxAndProfitDivisor > 0 ? totalValue / taxAndProfitDivisor : 0;
 
+                    const proposalDisplayName = p.clientData.proposalName ? `<span class="font-normal text-gray-600">- ${p.clientData.proposalName}</span>` : '';
                     return `
                         <div class="p-3 bg-gray-100 rounded-md text-sm">
                             <div class="flex justify-between items-center">
-                                <p><strong>Data:</strong> ${new Date(p.clientData.lastSaved).toLocaleDateString('pt-BR')}</p>
-                                <p><strong>Status:</strong> <span class="font-semibold">${p.status || 'Criada'}</span></p>
+                                <div>
+                                    <p><strong>Data:</strong> ${new Date(p.clientData.lastSaved).toLocaleDateString('pt-BR')} ${proposalDisplayName}</p>
+                                    <p><strong>Status:</strong> <span class="font-semibold">${p.status || 'Criada'}</span></p>
+                                </div>
                                 <p><strong>Valor Mensal:</strong> <span class="font-bold">${formatCurrency(finalValue)}</span></p>
                             </div>
                         </div>
