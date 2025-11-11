@@ -926,6 +926,9 @@
         let isInitialLoad = true;
         let configListenerAttached = false;
 
+        let resolveConfigLoaded;
+        const configLoadedPromise = new Promise(resolve => { resolveConfigLoaded = resolve; });
+
         // --- DADOS INICIAIS (FALLBACK) --- 
         const TIERS = [{
             min: 0,
@@ -1946,6 +1949,7 @@
                 if (servicosAnuaisTitle) servicosAnuaisTitle.style.display = '';
 
                 try {
+                    await configLoadedPromise;
                     console.log("Usuário autenticado. Configurando a visão do vendedor...");
                     clearForm(true); // Limpa o formulário para evitar dados de sessão de cliente
                     userId = user.uid;
@@ -2107,6 +2111,7 @@
                 loaderElem.style.display = 'none';
                 console.log("Aplicação iniciada com dados locais.");
                 exposeForTesting();
+                resolveConfigLoaded();
             }, 10000); // 10 seconds timeout
 
             if (!configListenerAttached) {
@@ -2139,6 +2144,7 @@
                 console.log("Aplicação iniciada com dados do Firebase.");
                 exposeForTesting();
             }
+            resolveConfigLoaded();
                 }, (error) => {
                     if (configLoaded) return;
 
@@ -2158,6 +2164,7 @@
                     loaderElem.style.display = 'none';
                     console.log("Aplicação iniciada com dados locais após erro.");
                     exposeForTesting();
+                    resolveConfigLoaded();
                 });
                 configListenerAttached = true;
             }
